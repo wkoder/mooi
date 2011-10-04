@@ -4,9 +4,13 @@ Created on Oct 3, 2011
 @author: Moises Osorio [WCoder]
 '''
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+import sys
+
+from PyQt4.QtCore import * #@UnusedWildImport
+from PyQt4.QtGui import * #@UnusedWildImport
+
 from PlotWidget import PlotWidget
+
 __version__ = "1.0.0"
 
 class MainWindow(QMainWindow):
@@ -91,3 +95,12 @@ class MainWindow(QMainWindow):
     def loadInitialFile(self):
         self.plot.plotFile("data/Deb1fun.dat")
         
+def main():
+    app = QApplication(sys.argv)
+    app.setOrganizationName("Centro de Investigacion y de Estudios Avanzados del Instituto Politecnico Nacional (CINVESTAV-IPN)")
+    app.setOrganizationDomain("cs.cinvestav.mx")
+    app.setApplicationName("MOOI: Multi-Objective Optimization Interface")
+    app.setWindowIcon(QIcon(":/icon.png"))
+    form = MainWindow()
+    form.show()
+    app.exec_()

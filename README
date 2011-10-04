@@ -1,0 +1,42 @@
+MOOI v 1.0.0 - Multi-Objective Optimization Interface written in Python + PyQt4
+
+MOOI eases your multi-objective optimization process.
+
+DEPENDENCIES
+------------
+
+You have to have gnuplot installed. See http://www.gnuplot.info/.
+You also need Qt4 + PyQt4 libraries and numpy.
+
+INSTALLATION
+------------
+
+At the moment there is no installer: you may need to change something in the MOOI executive to make it work. On a *nix system with PyQt4 installed and gnuplot in the PATH MOOI *should* work out of the box. 
+Running "./mooi" should work in the majority of the cases though.
+
+To install gnuplot on *buntu systems you can issue the command:
+
+sudo apt-get install gnuplot
+
+To install the needed dependencies (see: DEPENDENCIES) on *buntu systems you can issue the commands:
+
+sudo apt-get install python-numpy
+sudo apt-get install python-qt4
+
+COMPATIBILITY
+-------------
+
+MOOI has been tested only on Linux and with Gnuplot 4.4. It *should* work with other versions of Gnuplot and on other OS'es as well.
+
+For Windows users: to run MOOI you will need to issue the command "path\to\python\python.exe path\to\MOOI\mooi" from a cmd shell. You can just write "python.exe path\to\MOOI\mooi" if your python's bin directory is in the path.
+
+LICENSE
+-------
+
+See the file LICENSE for license info.
+
+CREDITS
+-------
+
+Moises Osorio
+<wcoder.mx@gmail.com>

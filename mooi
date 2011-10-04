@@ -1,0 +1,8 @@
+#!/usr/bin/env python
+
+try:
+    from src import MOOI
+except ImportError, e:
+    import Gnupylot
+    
+MOOI.main()
