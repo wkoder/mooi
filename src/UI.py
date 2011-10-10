@@ -5,11 +5,14 @@ Created on Oct 3, 2011
 '''
 
 import sys
+import dircache
 
 from PyQt4.QtCore import * #@UnusedWildImport
 from PyQt4.QtGui import * #@UnusedWildImport
 
 from PlotWidget import PlotWidget
+
+from MOSolution import MOSolution
 
 __version__ = "1.0.0"
 
@@ -17,12 +20,15 @@ class MainWindow(QMainWindow):
     
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
+
+        self.setWindowTitle("MOOI: Multi-Objective Optimization Interface")
         self.image = QImage()
         self.dirty = False
         self.filename = None
         self.mirroredvertically = False
         self.mirroredhorizontally = False
-        self.resize(640, 480)
+        self.resize(840, 480)
+        self.dataDir = "data"
         
         self.plot = PlotWidget()
         self.plot.setMinimumSize(640, 480)
@@ -30,21 +36,22 @@ class MainWindow(QMainWindow):
         self.plot.setAlignment(Qt.AlignCenter)
         self.plot.setContextMenuPolicy(Qt.ActionsContextMenu)
         self.setCentralWidget(self.plot)
-        
-#        logDockWidget = QDockWidget("Log", self)
-#        logDockWidget.setObjectName("LogDockWidget")
-#        logDockWidget.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-#        self.listWidget = QListWidget()
-#        logDockWidget.setWidget(self.listWidget)
-        
-#        self.addDockWidget(Qt.RightDockWidgetArea, logDockWidget)
         self.printer = None
         self.sizeLabel = QLabel()
         self.sizeLabel.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)
+
         status = self.statusBar()
         status.setSizeGripEnabled(False)
         status.addPermanentWidget(self.sizeLabel)
-        status.showMessage("Ready", 5000)
+        status.showMessage("Loading initial data...")
+        
+        self.pfWidget = QListWidget()
+        self.pfWidget.itemSelectionChanged.connect(self.solutionSelected)
+        pfDockWidget = QDockWidget("Pareto Fronts", self)
+        pfDockWidget.setObjectName("ParetoFronts")
+        pfDockWidget.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        pfDockWidget.setWidget(self.pfWidget)
+        self.addDockWidget(Qt.RightDockWidgetArea, pfDockWidget)
         
 #        fileNewAction = self.createAction("&New...", self.fileNew, QKeySequence.New, "filenew", "Create an image file")
 #        mirrorGroup = QActionGroup(self)
@@ -63,12 +70,10 @@ class MainWindow(QMainWindow):
 #        self.addActions(fileToolbar, (fileNewAction, fileQuitAction))
         
         settings = QSettings()
-        self.recentFiles = settings.value("RecentFiles").toStringList()
-        self.restoreGeometry(settings.value("Geometry").toByteArray())
-        self.restoreState(settings.value("MainWindow/State").toByteArray())
-        self.setWindowTitle("MOOI: Multi-Objective Optimization Interface")
-
-        QTimer.singleShot(0, self.loadInitialFile)
+        self.restoreGeometry(settings.value("UI/Geometry").toByteArray())
+        self.restoreState(settings.value("UI/State").toByteArray())
+        
+        QTimer.singleShot(0, self.loadInitialData)
 
     def createAction(self, text, slot=None, shortcut=None, icon=None, tip=None, checkable=False, signal="triggered()"):
         action = QAction(text, self)
@@ -91,16 +96,67 @@ class MainWindow(QMainWindow):
                 target.addSeparator()
             else:
                 target.addAction(action)
+                
+    def solutionSelected(self):
+        selection = self.pfWidget.currentItem()
+        if selection is None:
+            return
+        self.showSolution(selection.text())
+        
+    def showSolution(self, functionName):
+        function = self.solutionMap[str(functionName)]
+        self.plot.plotFile(function.functionSolution if function.functionSolution is not None else function.variableSolution)
+                
+    def getFunctionName(self, filename):
+        return filename.replace("_", "").replace("fun", "").replace("var", "").replace(".dat", "").replace("front", "").replace("pareto", "")
+        
+    def isFunctionFile(self, filename):
+        return "var" not in filename
 
-    def loadInitialFile(self):
-        self.plot.plotFile("data/Deb1fun.dat")
+    def loadInitialData(self):
+        self.solutionMap = dict()
+        self.solutions = []
+        for filename in dircache.listdir(self.dataDir):
+            functionName = self.getFunctionName(filename)
+            filename = self.dataDir + "/" + filename
+            
+            if functionName in self.solutionMap:
+                function = self.solutionMap[functionName]
+            else:
+                function = MOSolution(functionName)
+                self.solutionMap[functionName] = function
+                self.solutions.append(function)
+                
+            if self.isFunctionFile(filename):
+                function.functionSolution = filename
+            else:
+                function.variableSolution = filename
+                
+        self.solutions.sort()
+        for solution in self.solutions:
+            item = QListWidgetItem()
+            item.setText(solution.functionName)
+            self.pfWidget.addItem(item)
+        
+        if len(self.solutions) > 0:
+            self.pfWidget.setCurrentItem(self.pfWidget.item(0))
+            self.statusBar().showMessage("Ready!", 5000)
+        else:
+            self.statusBar().showMessage("Warning: No pareto front files found.")
+            
+    def closeEvent(self, event):
+        self.statusBar().showMessage("Closing...")
+        settings = QSettings()
+        settings.setValue("UI/Geometry", self.saveGeometry())
+        settings.setValue("UI/State", self.saveState())
+        self.plot.removeTemporalFiles()
         
 def main():
     app = QApplication(sys.argv)
     app.setOrganizationName("Centro de Investigacion y de Estudios Avanzados del Instituto Politecnico Nacional (CINVESTAV-IPN)")
     app.setOrganizationDomain("cs.cinvestav.mx")
     app.setApplicationName("MOOI: Multi-Objective Optimization Interface")
-    app.setWindowIcon(QIcon(":/icon.png"))
+    #app.setWindowIcon(QIcon(":/icon.png"))
     form = MainWindow()
     form.show()
     app.exec_()

@@ -29,7 +29,8 @@ class PlotWidget(QtGui.QLabel):
         f = open(filename, "r")
         for line in f:
             point = [float(x) for x in line.split()]
-            points.append(point)
+            if len(point) > 0:
+                points.append(point)
         self.plot(points)
         
     def plot(self, points):
@@ -44,7 +45,10 @@ class PlotWidget(QtGui.QLabel):
                     z = []
                 z.append(point[2])
                 
-        data = Gnuplot.Data(x, y)
+        if z is None:
+            data = Gnuplot.Data(x, y)
+        else:
+            data = Gnuplot.Data(x, y, z)
         gp = Gnuplot.Gnuplot(persist=0)
         gp("set terminal unknown")
         gp.title("Points")
@@ -58,13 +62,11 @@ class PlotWidget(QtGui.QLabel):
 
         tmp = tempfile.mkstemp(prefix="mooi_", suffix=".png", text=False)[1]
         gp.hardcopy(filename=tmp, terminal="png")
+        self.removeTemporalFiles()
+        self.__tempNames.append(tmp)
         self.setPlotPixmap(tmp)
 
     def setPlotPixmap(self, filename):
-        """Tries to set the plot image with the given file. 
-        It tries 10 times, if it doesn't succeed it shows an error message.
-        @param filename: filename whose contents are to be plotted
-        @type filename: string"""
         # try for 13 times (1.3 second total) before giving up
         counter = 13
         while not self.plotPixmap.load(filename) and counter > 0:
@@ -140,3 +142,11 @@ class PlotWidget(QtGui.QLabel):
             plot.plot(front)
         print "Pareto Front plotted in", fileName + ".png"
         
+    def removeTemporalFiles(self):
+        for filename in self.__tempNames:
+            try:
+                os.remove(filename)
+            except:
+                print "Couldn't delete temporal file: %s" % filename
+        self.__tempNames = []
+    
