@@ -9,31 +9,58 @@ import os
 import tempfile
 
 import Gnuplot
-from PyQt4 import QtGui
-from PyQt4 import QtCore
+from PyQt4.QtCore import * #@UnusedWildImport
+from PyQt4.QtGui import * #@UnusedWildImport
 
-class PlotWidget(QtGui.QLabel):
+class PlotWidget(QLabel):
     """A L{QLabel} whose surface is painted with the current plot."""
     def __init__(self):
-        QtGui.QLabel.__init__(self)
+        QLabel.__init__(self)
 
-        self.__tempNames = []
+        self.tempNames = []
+        self.gp = None
 
-        self.setAlignment(QtCore.Qt.AlignCenter)
-        self.plotPixmap = QtGui.QPixmap()
+        self.setAlignment(Qt.AlignCenter)
+        self.plotPixmap = QPixmap()
         self.setPixmap(self.plotPixmap)
-        self.setStyleSheet('QLabel { background-color: white }')
+        self.setStyleSheet('* { background-color: white; color: red }')
         
-    def plotFile(self, filename):
+    def plotSolution(self, pareto, solutions, title, xlabel, ylabel, zlabel):
+        self._startPlotting(title, xlabel, ylabel, zlabel)
+        if pareto is not None:
+            self._plotFile(pareto, "Front")
+        for solution in solutions:
+            self._plotFile(solution, "Solution")
+        self._endPlotting()
+        
+    def _startPlotting(self, title, xlabel, ylabel, zlabel):
+        self.gp = Gnuplot.Gnuplot(persist=0)
+        self.gp("set terminal unknown")
+        self.gp.title(title)
+        self.gp.xlabel(xlabel)
+        self.gp.ylabel(ylabel)
+        self.gp.zlabel(zlabel)
+        self.gp.plotted = False
+        
+    def _endPlotting(self):
+        tmp = tempfile.mkstemp(prefix="mooi_", suffix=".png", text=False)[1]
+        self.gp.hardcopy(filename=tmp, terminal="png")
+        self.gp = None
+        self.removeTemporalFiles()
+        self.tempNames.append(tmp)
+        self.setPlotPixmap(tmp)
+        
+    def _plotFile(self, filename, title):
         points = []
         f = open(filename, "r")
         for line in f:
             point = [float(x) for x in line.split()]
             if len(point) > 0:
                 points.append(point)
-        self.plot(points)
+        points.sort()
+        self._plot(points, title)
         
-    def plot(self, points):
+    def _plot(self, points, title):
         x = []
         y = []
         z = None
@@ -46,26 +73,23 @@ class PlotWidget(QtGui.QLabel):
                 z.append(point[2])
                 
         if z is None:
-            data = Gnuplot.Data(x, y)
+            data = Gnuplot.Data(x, y, title=title)
         else:
-            data = Gnuplot.Data(x, y, z)
-        gp = Gnuplot.Gnuplot(persist=0)
-        gp("set terminal unknown")
-        gp.title("Points")
-        gp.xlabel("F1")
-        gp.ylabel("F2")
-        if z is not None: # 3D
-            gp.zlabel("F3")
-            gp.splot(data);
-        else: # 2D
-            gp.plot(data);
-
-        tmp = tempfile.mkstemp(prefix="mooi_", suffix=".png", text=False)[1]
-        gp.hardcopy(filename=tmp, terminal="png")
-        self.removeTemporalFiles()
-        self.__tempNames.append(tmp)
-        self.setPlotPixmap(tmp)
-
+            data = Gnuplot.Data(x, y, z, title=title)
+            
+        if z is None: # 2D
+            if self.gp.plotted:
+                self.gp.replot(data)
+            else:
+                self.gp.plot(data)
+        else: # 3D
+            if self.gp.plotted:
+                self.gp.replot(data)
+            else:
+                self.gp.splot(data)
+                
+        self.gp.plotted = True
+        
     def setPlotPixmap(self, filename):
         # try for 13 times (1.3 second total) before giving up
         counter = 13
@@ -143,10 +167,10 @@ class PlotWidget(QtGui.QLabel):
         print "Pareto Front plotted in", fileName + ".png"
         
     def removeTemporalFiles(self):
-        for filename in self.__tempNames:
+        for filename in self.tempNames:
             try:
                 os.remove(filename)
             except:
                 print "Couldn't delete temporal file: %s" % filename
-        self.__tempNames = []
+        self.tempNames = []
     
