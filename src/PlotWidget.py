@@ -21,11 +21,13 @@ class PlotWidget(QLabel):
         self.gp = None
 
         self.setAlignment(Qt.AlignCenter)
-        self.plotPixmap = QPixmap()
-        self.setPixmap(self.plotPixmap)
-        self.setStyleSheet('* { background-color: white; color: red }')
+        self.clear()
         
     def plotSolution(self, pareto, solutions, title, xlabel, ylabel, zlabel):
+        self.clear()
+        if pareto is None and len(solutions) == 0:
+            return
+        
         self._startPlotting(title, xlabel, ylabel, zlabel)
         if pareto is not None:
             self._plotFile(pareto, "Front")
@@ -46,7 +48,6 @@ class PlotWidget(QLabel):
         tmp = tempfile.mkstemp(prefix="mooi_", suffix=".png", text=False)[1]
         self.gp.hardcopy(filename=tmp, terminal="png")
         self.gp = None
-        self.removeTemporalFiles()
         self.tempNames.append(tmp)
         self.setPlotPixmap(tmp)
         
@@ -166,7 +167,14 @@ class PlotWidget(QLabel):
             plot.plot(front)
         print "Pareto Front plotted in", fileName + ".png"
         
-    def removeTemporalFiles(self):
+    def clear(self):
+        self.plotPixmap = QPixmap()
+        #self.setPixmap(self.plotPixmap)
+        self.setText("No plot to show")
+        self.setStyleSheet('* { background-color: white }')
+        self._removeTemporalFiles()
+        
+    def _removeTemporalFiles(self):
         for filename in self.tempNames:
             try:
                 os.remove(filename)

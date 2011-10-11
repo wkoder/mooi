@@ -54,11 +54,13 @@ class MainWindow(QMainWindow):
         self.showSolutionsRadio.setChecked(True)
         self.showSolutionsRadio.toggled.connect(self._showSolution)
         self.showVariablesRadio = QRadioButton("Variables")
+        
         radioWidget = QWidget()
         radioLayout = QHBoxLayout()
         radioLayout.addWidget(self.showSolutionsRadio)
         radioLayout.addWidget(self.showVariablesRadio)
         radioWidget.setLayout(radioLayout)
+        
         self.generationLabel = QLabel("Generation: 1")
         self.generationSlider = QSlider(Qt.Horizontal)
         self.generationSlider.setTickPosition(QSlider.TicksBothSides)
@@ -67,13 +69,20 @@ class MainWindow(QMainWindow):
         self.generationSlider.setMaximum(1)
         self.generationSlider.setTickInterval(1)
         self.generationSlider.valueChanged.connect(self._showSolution)
+        
+        self.solutionSelector = QWidget()
+        solutionSelectorLayout = QVBoxLayout()
+        self.solutionSelector.setLayout(solutionSelectorLayout)
+        
         self.currentDirLabel = QLabel("No directory to scan")
         self.selectButton = QPushButton("Select")
         self.selectButton.clicked.connect(self.selectCurrentDirectory)
+        
         controlLayout = QVBoxLayout()
         controlLayout.addWidget(radioWidget)
         controlLayout.addWidget(self.generationLabel)
         controlLayout.addWidget(self.generationSlider)
+        controlLayout.addWidget(self.solutionSelector)
         controlLayout.addStretch()
         controlLayout.addWidget(self.selectButton)
         controlLayout.addWidget(self.currentDirLabel)
@@ -164,8 +173,22 @@ class MainWindow(QMainWindow):
     def showSolution(self, functionName):
         function = self.solutions[str(functionName)]
         self.currentSolution = function
+        self._updateSolutionSelection()
         self._showSolution()
             
+    def _updateSolutionSelection(self):
+        self.clearWidget(self.solutionSelector)
+
+        pareto = QCheckBox("Pareto")
+        pareto.setChecked(True)
+        pareto.stateChanged.connect(self._showSolution)
+        self.solutionSelector.layout().addWidget(pareto)
+
+        solution = QCheckBox("Solution")
+        solution.setChecked(True)
+        solution.stateChanged.connect(self._showSolution)
+        self.solutionSelector.layout().addWidget(solution)
+        
     def _showSolution(self):
         sol = self.currentSolution
         if sol is None:
@@ -187,13 +210,31 @@ class MainWindow(QMainWindow):
         
         if self.showSolutionsRadio.isChecked():
             self.generationSlider.setMaximum(sol.functionSolution.count())
-            generation = self.generationSlider.value()
-            self.plot.plotSolution(sol.functionPareto, [sol.functionSolution.getSolutions()[generation-1]], sol.functionName, "F1", "F2", "F3")
+            toPlot = self._getSolutionsToPlot()
+            self.plot.plotSolution(toPlot[0], toPlot[1:], sol.functionName, "F1", "F2", "F3")
         else:
             self.generationSlider.setMaximum(sol.variableSolution.count())
-            generation = self.generationSlider.value()
-            self.plot.plotSolution(sol.variablePareto, [sol.variableSolution.getSolutions()[generation-1]], sol.functionName, "x1", "x2", "x3")
+            toPlot = self._getSolutionsToPlot()
+            self.plot.plotSolution(toPlot[0], toPlot[1:], sol.functionName, "x1", "x2", "x3")
+        
+    def _getSolutionsToPlot(self):
+        sol = self.currentSolution
+        generation = self.generationSlider.value()
         self.generationLabel.setText("Generation: %d" % generation)
+        
+        solutions = []
+        showPareto = self.solutionSelector.layout().itemAt(0).widget().isChecked()
+        showSolution = self.solutionSelector.layout().itemAt(1).widget().isChecked()
+        if self.showSolutionsRadio.isChecked():
+            solutions.append(sol.functionPareto if showPareto else None)
+            if showSolution:
+                solutions.append(sol.functionSolution.getSolutions()[generation-1])
+        else:
+            solutions.append(sol.variablePareto if showPareto else None)
+            if showSolution:
+                solutions.append(sol.variableSolution.getSolutions()[generation-1])
+            
+        return solutions
             
     def isSolutionFile(self, filename):
         if not os.path.exists(filename) or os.path.isdir(filename):
@@ -219,11 +260,11 @@ class MainWindow(QMainWindow):
             return
         
         for function in self.solutions.values():
-            if function.functionPareto is None:
+            if function.functionPareto is None and function.variablePareto is None:
                 del self.solutions[function.functionName]
             else:
                 function.clear()
-        
+                
         for filename in dircache.listdir(self.currentDir):
             filename = str(self.currentDir + "/" + filename)
 #            fileType, _ = mimetypes.guess_type(filename)
@@ -265,6 +306,11 @@ class MainWindow(QMainWindow):
     def isFunctionFile(self, filename):
         return "var" not in filename.lower()
     
+    def clearWidget(self, widget):
+        layout = widget.layout()
+        for i in xrange(layout.count()-1, -1, -1):
+            layout.removeItem(layout.itemAt(i))
+    
     def updateUI(self):
         self.statusBar().showMessage("Updating solutions...")
                 
@@ -274,6 +320,7 @@ class MainWindow(QMainWindow):
                 solutions.append(solution)
             
         solutions.sort(cmp=None, key=lambda sol: sol.functionName.lower())
+        self.clearWidget(self.solutionSelector)
         self.solutionWidget.clear()
         for solution in solutions:
             item = QListWidgetItem()
@@ -312,7 +359,7 @@ class MainWindow(QMainWindow):
         settings = QSettings()
         settings.setValue("UI/Geometry", self.saveGeometry())
         settings.setValue("UI/State", self.saveState())
-        self.plot.removeTemporalFiles()
+        self.plot.clear()
         
 def main():
     app = QApplication(sys.argv)
