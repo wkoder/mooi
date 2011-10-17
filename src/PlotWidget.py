@@ -23,7 +23,7 @@ class PlotWidget(QLabel):
         self.setAlignment(Qt.AlignCenter)
         self.clear()
         
-    def plotSolution(self, pareto, solutions, title, xlabel, ylabel, zlabel):
+    def plotSolution(self, pareto, solutions, title, xlabel, ylabel, zlabel, filename=None):
         self.clear()
         if pareto is None and len(solutions) == 0:
             return
@@ -33,7 +33,7 @@ class PlotWidget(QLabel):
             self._plotFile(pareto, "Front")
         for solution in solutions:
             self._plotFile(solution, "Solution")
-        self._endPlotting()
+        self._endPlotting(filename)
         
     def _startPlotting(self, title, xlabel, ylabel, zlabel):
         self.gp = Gnuplot.Gnuplot(persist=0)
@@ -44,12 +44,15 @@ class PlotWidget(QLabel):
         self.gp.zlabel(zlabel)
         self.gp.plotted = False
         
-    def _endPlotting(self):
-        tmp = tempfile.mkstemp(prefix="mooi_", suffix=".png", text=False)[1]
-        self.gp.hardcopy(filename=tmp, terminal="png")
+    def _endPlotting(self, filename=None):
+        tmp = filename is None
+        if tmp:
+            filename = tempfile.mkstemp(prefix="mooi_", suffix=".png", text=False)[1]
+        self.gp.hardcopy(filename=filename, terminal="png")
         self.gp = None
-        self.tempNames.append(tmp)
-        self.setPlotPixmap(tmp)
+        if tmp:
+            self.tempNames.append(filename)
+            self.setPlotPixmap(filename)
         
     def _plotFile(self, filename, title):
         points = []
@@ -102,6 +105,7 @@ class PlotWidget(QLabel):
             self.setText("Error while plotting, try again.")
         else:
             self.setPixmap(self.plotPixmap)
+        self._removeTemporalFiles()
         
     def plot2(self, title = "Solutions with PAE Dominance Grid", fileName = "output/pae_solutions_"+time.strftime("%Y-%m-%d"), showGrid = 0, showLabel = 0, test = None): # Creamos la grafica con GNUPlot
         plot = Gnuplot.Gnuplot(persist=1) # Se muestra al usuario

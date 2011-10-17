@@ -78,6 +78,9 @@ class MainWindow(QMainWindow):
         self.selectButton = QPushButton("Select")
         self.selectButton.clicked.connect(self.selectCurrentDirectory)
         
+        exportButton = QPushButton("Export Image")
+        exportButton.clicked.connect(self.exportImage)
+        
         refreshButton = QPushButton("Refresh")
         refreshButton.clicked.connect(self.scanDirectory)
         
@@ -87,6 +90,7 @@ class MainWindow(QMainWindow):
         controlLayout.addWidget(self.generationSlider)
         controlLayout.addWidget(self.solutionSelector)
         controlLayout.addWidget(refreshButton)
+        controlLayout.addWidget(exportButton)
         controlLayout.addStretch()
         controlLayout.addWidget(self.selectButton)
         controlLayout.addWidget(self.currentDirLabel)
@@ -148,6 +152,26 @@ class MainWindow(QMainWindow):
                 target.addSeparator()
             else:
                 target.addAction(action)
+                
+    def exportImage(self):
+        settings = QSettings()
+        filename = settings.value("Config/SaveDirectory").toString()
+        filename = QFileDialog.getSaveFileName(self, "Export image as", filename)
+        if filename is None or filename == "":
+            return
+
+        self.currentDir = filename
+        self.currentDirLabel.setText(self.currentDir)
+        settings.setValue("Config/SaveDirectory", QVariant(filename))
+        self._exportToImage(filename)
+        self.statusBar().showMessage("Image saved!", 5000)
+                
+    def _exportToImage(self, filename=None):
+        toPlot = self._getSolutionsToPlot()
+        if self.showSolutionsRadio.isChecked():
+            self.plot.plotSolution(toPlot[0], toPlot[1:], self.currentSolution.functionName, "F1", "F2", "F3", filename)
+        else:
+            self.plot.plotSolution(toPlot[0], toPlot[1:], self.currentSolution.functionName, "x1", "x2", "x3", filename)
                 
     def helpAbout(self):
         QMessageBox.about(self, "About Image Changer",
@@ -214,12 +238,9 @@ class MainWindow(QMainWindow):
         
         if self.showSolutionsRadio.isChecked():
             self.generationSlider.setMaximum(sol.functionSolution.count())
-            toPlot = self._getSolutionsToPlot()
-            self.plot.plotSolution(toPlot[0], toPlot[1:], sol.functionName, "F1", "F2", "F3")
         else:
             self.generationSlider.setMaximum(sol.variableSolution.count())
-            toPlot = self._getSolutionsToPlot()
-            self.plot.plotSolution(toPlot[0], toPlot[1:], sol.functionName, "x1", "x2", "x3")
+        self._exportToImage()
         
     def _getSolutionsToPlot(self):
         sol = self.currentSolution
