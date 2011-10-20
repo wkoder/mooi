@@ -268,17 +268,22 @@ class MainWindow(QMainWindow):
         f = open(filename)
         try:
             tries = 5 # Try 5 times to check if the file is valid
+            lastlen = -1
             for line in f:
-                [float(x) for x in line.split()]
+                points = [float(x) for x in line.split()]
+                if lastlen != -1 and len(points) != lastlen:
+                    return False
+                
+                lastlen = len(points)
                 tries = tries - 1
                 if tries == 0:
                     break
                 
-            f.close()
-            return True
+            return lastlen >= 2
         except Exception:
-            f.close()
             return False
+        finally:
+            f.close()
             
     def scanDirectory(self):
         if self.currentDir is None:
@@ -326,7 +331,8 @@ class MainWindow(QMainWindow):
         if "." in filename:
             filename = filename[:filename.rfind(".")]
         return filename.lower().replace("_fun", "").replace("_var", "").replace("fun", "").replace("var", "")\
-            .replace("front_", "").replace("pareto_", "").replace("front", "").replace("pareto", "").title()
+            .replace("front_", "").replace("pareto_", "").replace("_front", "").replace("_pareto", "")\
+            .replace("front", "").replace("pareto", "").title()
         
     def isFunctionFile(self, filename):
         return "var" not in filename.lower()
