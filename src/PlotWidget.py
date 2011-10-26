@@ -81,17 +81,14 @@ class PlotWidget(QLabel):
         else:
             data = Gnuplot.Data(x, y, z, title=title)
             
-        if z is None: # 2D
-            if self.gp.plotted:
-                self.gp.replot(data)
-            else:
-                self.gp.plot(data)
+        print self.gp.plotted
+        if self.gp.plotted:
+            self.gp.replot(data)
+        elif z is None: # 2D
+            self.gp.plot(data)
         else: # 3D
-            if self.gp.plotted:
-                self.gp.replot(data)
-            else:
-                self.gp.splot(data)
-                
+            self.gp.splot(data)
+        
         self.gp.plotted = True
         
     def setPlotPixmap(self, filename):

@@ -30,10 +30,10 @@ class MainWindow(QMainWindow):
         self.mirroredvertically = False
         self.mirroredhorizontally = False
         self.resize(840, 480)
-        self.dataDir = "data"
+        self.dataDir = os.path.dirname(__file__) + "/data"
         
         self.plot = PlotWidget()
-        self.plot.setMinimumSize(640, 480)
+        self.plot.setMinimumSize(320, 480)
         self.plot.setAlignment(Qt.AlignCenter)
         self.plot.setContextMenuPolicy(Qt.ActionsContextMenu)
         self.setCentralWidget(self.plot)
@@ -127,9 +127,14 @@ class MainWindow(QMainWindow):
         currentDir = str(settings.value("Config/Directory").toString())
         if currentDir is not None:
             self.currentDir = currentDir
-            self.currentDirLabel.setText(currentDir)
+            self.currentDirLabel.setText(self.shortenName(currentDir, 32))
         
         QTimer.singleShot(0, self.loadInitialData)
+
+    def shortenName(self, name, maxlen):
+        if len(name) <= maxlen:
+            return name
+        return "..." + name[3 - maxlen:]
 
     def createAction(self, text, slot=None, shortcut=None, icon=None, tip=None, checkable=False, signal="triggered()"):
         action = QAction(text, self)
@@ -161,7 +166,7 @@ class MainWindow(QMainWindow):
             return
 
         self.currentDir = filename
-        self.currentDirLabel.setText(self.currentDir)
+        self.currentDirLabel.setText(self.shortenName(self.currentDir, 32))
         settings.setValue("Config/SaveDirectory", QVariant(filename))
         self._exportToImage(filename)
         self.statusBar().showMessage("Image saved!", 5000)
@@ -187,7 +192,7 @@ class MainWindow(QMainWindow):
         directory = QFileDialog.getExistingDirectory(self, "Select a directory to scan", self.currentDir)
         if os.path.exists(directory):
             self.currentDir = directory
-            self.currentDirLabel.setText(self.currentDir)
+            self.currentDirLabel.setText(self.shortenName(self.currentDir, 32))
             settings = QSettings()
             settings.setValue("Config/Directory", QVariant(directory))
             QTimer.singleShot(0, self.scanDirectory)
@@ -331,8 +336,8 @@ class MainWindow(QMainWindow):
         if "." in filename:
             filename = filename[:filename.rfind(".")]
         return filename.lower().replace("_fun", "").replace("_var", "").replace("fun", "").replace("var", "")\
-            .replace("front_", "").replace("pareto_", "").replace("_front", "").replace("_pareto", "")\
-            .replace("front", "").replace("pareto", "").title()
+            .replace("front_", "").replace("pareto_", "").replace("pf_", "").replace("_pf", "").replace("_front", "")\
+            .replace("_pareto", "").replace("front", "").replace("pareto", "").title()
         
     def isFunctionFile(self, filename):
         return "var" not in filename.lower()
