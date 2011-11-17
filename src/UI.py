@@ -85,8 +85,11 @@ class MainWindow(QMainWindow):
         self.solutionSelectorWidget.layout().addWidget(solutionSelectorButtons)
         self.solutionSelectorWidget.layout().addWidget(self.solutionSelector)
         
-        exportButton = QPushButton("Export Image")
+        exportButton = QPushButton("Export image")
         exportButton.clicked.connect(self.exportImage)
+        
+        exportAllButton = QPushButton("Export all images")
+        exportAllButton.clicked.connect(self.exportAllImages)
         
         refreshButton = QPushButton("Refresh")
         refreshButton.clicked.connect(self.scanAllDirectories)
@@ -99,6 +102,7 @@ class MainWindow(QMainWindow):
         controlLayout.addStretch()
         controlLayout.addWidget(refreshButton)
         controlLayout.addWidget(exportButton)
+        controlLayout.addWidget(exportAllButton)
         controlWidget = QWidget()
         controlWidget.setLayout(controlLayout)
         controlDock = QDockWidget("Control", self)
@@ -133,16 +137,36 @@ class MainWindow(QMainWindow):
     def exportImage(self):
         settings = QSettings()
         filename = settings.value("Config/SaveDirectory").toString()
-        filename = QFileDialog.getSaveFileName(self, "Export image as", filename)
+        filename = QFileDialog.getSaveFileName(self, "Export image as", filename, ("PNG image (*.png)"))
         if filename is None or filename == "":
             return
 
         settings.setValue("Config/SaveDirectory", QVariant(filename))
-        self._exportToImage(filename)
+        self._exportCurrentImage(filename)
         self.statusBar().showMessage("Image saved!", 5000)
-                
-    def _exportToImage(self, filename=None):
-        toPlot = self._getSolutionsToPlot()
+    
+    def _exportCurrentImage(self, filename=None):
+        generation = self.generationSlider.value()
+        self.generationLabel.setText("Generation: %d" % generation)
+        self._exportToImage(self.currentSolution, generation, filename)
+    
+    def exportAllImages(self):
+        settings = QSettings()
+        directory = settings.value("Config/SaveAllDirectory").toString()
+        directory = QFileDialog.getExistingDirectory(self, "Select a directory to export to", directory)
+        if directory is None or not os.path.exists(directory):
+            return
+
+        settings.setValue("Config/SaveAllDirectory", QVariant(directory))
+#        for solutionName in self.solutions.keys():
+        for i in xrange(self.solutionWidget.count()):
+            solutionName = str(self.solutionWidget.item(i).text())
+            filename = directory + "/" + solutionName + ".png"
+            self._exportToImage(self.solutions[solutionName], 0, filename)
+        self.statusBar().showMessage("Images saved!", 5000)
+    
+    def _exportToImage(self, solution, generation, filename):
+        toPlot = self._getSolutionsToPlot(solution, generation)
         if self.showSolutionsRadio.isChecked():
             self.plot.plotSolution(toPlot, self.currentSolution.functionName, "F1", "F2", "F3", filename)
         else:
@@ -233,13 +257,9 @@ class MainWindow(QMainWindow):
 #            self.generationSlider.setMaximum(sol.functionImplementation.count())
 #        else:
 #            self.generationSlider.setMaximum(sol.variableImplementation.count())
-        self._exportToImage()
+        self._exportCurrentImage()
         
-    def _getSolutionsToPlot(self):
-        sol = self.currentSolution
-        generation = self.generationSlider.value()
-        self.generationLabel.setText("Generation: %d" % generation)
-        
+    def _getSolutionsToPlot(self, sol, generation):
         solutions = {}
         for i in xrange(0, self.solutionSelector.layout().count()):
             implementationItem = self.solutionSelector.layout().itemAt(i).widget()

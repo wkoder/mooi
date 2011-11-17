@@ -24,7 +24,8 @@ class PlotWidget(QLabel):
         self.clear()
         
     def plotSolution(self, solutions, title, xlabel, ylabel, zlabel, filename=None):
-        self.clear()
+        if filename is None:
+            self.clear()
         if len(solutions) == 0:
             return
         
