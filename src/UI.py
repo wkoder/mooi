@@ -16,7 +16,8 @@ from PlotWidget import PlotWidget
 
 from MOSolution import MOSolution
 
-__version__ = "1.0.0"
+__VERSION__ = "1.0.0"
+__PARETO__ = "pareto"
 
 class MainWindow(QMainWindow):
     
@@ -30,7 +31,6 @@ class MainWindow(QMainWindow):
         self.mirroredvertically = False
         self.mirroredhorizontally = False
         self.resize(840, 480)
-        self.dataDir = os.path.dirname(__file__) + "/data"
         
         self.plot = PlotWidget()
         self.plot.setMinimumSize(320, 480)
@@ -71,29 +71,34 @@ class MainWindow(QMainWindow):
         self.generationSlider.valueChanged.connect(self._showSolution)
         
         self.solutionSelector = QWidget()
-        solutionSelectorLayout = QVBoxLayout()
-        self.solutionSelector.setLayout(solutionSelectorLayout)
-        
-        self.currentDirLabel = QLabel("No directory to scan")
-        self.selectButton = QPushButton("Select")
-        self.selectButton.clicked.connect(self.selectCurrentDirectory)
+        self.solutionSelector.setLayout(QVBoxLayout())
+        addSolutionButton = QPushButton("Add")
+        addSolutionButton.clicked.connect(self.addImplementation)
+        removeSolutionButton = QPushButton("Remove")
+        removeSolutionButton.clicked.connect(self.removeImplementation)
+        solutionSelectorButtons = QWidget()
+        solutionSelectorButtons.setLayout(QHBoxLayout())
+        solutionSelectorButtons.layout().addWidget(addSolutionButton)
+        solutionSelectorButtons.layout().addWidget(removeSolutionButton)
+        self.solutionSelectorWidget = QWidget()
+        self.solutionSelectorWidget.setLayout(QVBoxLayout())
+        self.solutionSelectorWidget.layout().addWidget(solutionSelectorButtons)
+        self.solutionSelectorWidget.layout().addWidget(self.solutionSelector)
         
         exportButton = QPushButton("Export Image")
         exportButton.clicked.connect(self.exportImage)
         
         refreshButton = QPushButton("Refresh")
-        refreshButton.clicked.connect(self.scanDirectory)
+        refreshButton.clicked.connect(self.scanAllDirectories)
         
         controlLayout = QVBoxLayout()
         controlLayout.addWidget(radioWidget)
         controlLayout.addWidget(self.generationLabel)
         controlLayout.addWidget(self.generationSlider)
-        controlLayout.addWidget(self.solutionSelector)
+        controlLayout.addWidget(self.solutionSelectorWidget)
+        controlLayout.addStretch()
         controlLayout.addWidget(refreshButton)
         controlLayout.addWidget(exportButton)
-        controlLayout.addStretch()
-        controlLayout.addWidget(self.selectButton)
-        controlLayout.addWidget(self.currentDirLabel)
         controlWidget = QWidget()
         controlWidget.setLayout(controlLayout)
         controlDock = QDockWidget("Control", self)
@@ -102,32 +107,21 @@ class MainWindow(QMainWindow):
         controlDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.addDockWidget(Qt.LeftDockWidgetArea, controlDock)
         
-#        fileNewAction = self.createAction("&New...", self.fileNew, QKeySequence.New, "filenew", "Create an image file")
-#        mirrorGroup = QActionGroup(self)
-#        editUnMirrorAction = self.createAction("&Unmirror", self.editUnMirror, "Ctrl+U", "editunmirror", "Unmirror the image", True, "toggled(bool)")
-#        mirrorGroup.addAction(editUnMirrorAction)
-#        editUnMirrorAction.setChecked(True)
-        
-#        editMenu = self.menuBar().addMenu("&Edit")
-#        self.addActions(editMenu, (editInvertAction, editZoomAction))
-
-#        mirrorMenu = editMenu.addMenu(QIcon(":/editmirror.png"), "&Mirror")
-#        self.addActions(mirrorMenu, (editUnMirrorAction))
-        
-#        fileToolbar = self.addToolBar("File")
-#        fileToolbar.setObjectName("FileToolBar")
-#        self.addActions(fileToolbar, (fileNewAction, fileQuitAction))
-        
         self.currentSolution = None
-        self.currentDir = None
+        self.implementationDirectories = []
 
         settings = QSettings()
         self.restoreState(settings.value("UI/State").toByteArray())
         self.restoreGeometry(settings.value("UI/Geometry").toByteArray())
-        currentDir = str(settings.value("Config/Directory").toString())
-        if currentDir is not None:
-            self.currentDir = currentDir
-            self.currentDirLabel.setText(self.shortenName(currentDir, 32))
+        currentDirs = settings.value("Config/Directories")
+        if currentDirs is not None:
+            for directory in currentDirs.toList():
+                self.implementationDirectories.append(directory.toString())
+        
+        paretoDirectory = os.path.dirname(__file__) + "/" + __PARETO__
+        if not paretoDirectory in self.implementationDirectories and \
+            not __PARETO__ in map(self.getImplementationName, self.implementationDirectories):
+            self.implementationDirectories.insert(0, paretoDirectory)
         
         QTimer.singleShot(0, self.loadInitialData)
 
@@ -136,28 +130,6 @@ class MainWindow(QMainWindow):
             return name
         return "..." + name[3 - maxlen:]
 
-    def createAction(self, text, slot=None, shortcut=None, icon=None, tip=None, checkable=False, signal="triggered()"):
-        action = QAction(text, self)
-        if icon is not None:
-            action.setIcon(QIcon(":/%s.png" % icon))
-        if shortcut is not None:
-            action.setShortcut(shortcut)
-        if tip is not None:
-            action.setToolTip(tip)
-            action.setStatusTip(tip)
-        if slot is not None:
-            self.connect(action, SIGNAL(signal), slot)
-        if checkable:
-            action.setCheckable(True)
-        return action
-
-    def addActions(self, target, actions):
-        for action in actions:
-            if action is None:
-                target.addSeparator()
-            else:
-                target.addAction(action)
-                
     def exportImage(self):
         settings = QSettings()
         filename = settings.value("Config/SaveDirectory").toString()
@@ -165,8 +137,6 @@ class MainWindow(QMainWindow):
         if filename is None or filename == "":
             return
 
-        self.currentDir = filename
-        self.currentDirLabel.setText(self.shortenName(self.currentDir, 32))
         settings.setValue("Config/SaveDirectory", QVariant(filename))
         self._exportToImage(filename)
         self.statusBar().showMessage("Image saved!", 5000)
@@ -174,9 +144,9 @@ class MainWindow(QMainWindow):
     def _exportToImage(self, filename=None):
         toPlot = self._getSolutionsToPlot()
         if self.showSolutionsRadio.isChecked():
-            self.plot.plotSolution(toPlot[0], toPlot[1:], self.currentSolution.functionName, "F1", "F2", "F3", filename)
+            self.plot.plotSolution(toPlot, self.currentSolution.functionName, "F1", "F2", "F3", filename)
         else:
-            self.plot.plotSolution(toPlot[0], toPlot[1:], self.currentSolution.functionName, "x1", "x2", "x3", filename)
+            self.plot.plotSolution(toPlot, self.currentSolution.functionName, "x1", "x2", "x3", filename)
                 
     def helpAbout(self):
         QMessageBox.about(self, "About Image Changer",
@@ -186,16 +156,29 @@ class MainWindow(QMainWindow):
             <p>This application can be used to perform
             simple optimization analysis.
             <p>Python %s - Qt %s - PyQt %s on %s""" % 
-            (__version__, platform.python_version(), QT_VERSION_STR, PYQT_VERSION_STR, platform.system()))
+            (__VERSION__, platform.python_version(), QT_VERSION_STR, PYQT_VERSION_STR, platform.system()))
 
-    def selectCurrentDirectory(self):
-        directory = QFileDialog.getExistingDirectory(self, "Select a directory to scan", self.currentDir)
-        if os.path.exists(directory):
-            self.currentDir = directory
-            self.currentDirLabel.setText(self.shortenName(self.currentDir, 32))
-            settings = QSettings()
-            settings.setValue("Config/Directory", QVariant(directory))
-            QTimer.singleShot(0, self.scanDirectory)
+    def addImplementation(self):
+        directory = None if len(self.implementationDirectories) == 0 else self.implementationDirectories[-1]
+        directory = QFileDialog.getExistingDirectory(self, "Select a directory to scan", directory)
+        if not os.path.exists(directory) or directory in self.implementationDirectories:
+            return
+        
+        self.implementationDirectories.append(directory)
+        self.addSolutionForSelection(self.getImplementationName(directory))
+        settings = QSettings()
+        settings.setValue("Config/Directories", QVariant(self.implementationDirectories))
+        QTimer.singleShot(0, self.scanDirectory)
+        
+    def removeImplementation(self):
+        layout = self.solutionSelector.layout()
+        for i in xrange(layout.count()-1, -1, -1):
+            if layout.itemAt(i).widget().isChecked():
+                layout.removeItem(layout.itemAt(i))
+                del self.implementationDirectories[i]
+                
+        settings = QSettings()
+        settings.setValue("Config/Directories", QVariant(self.implementationDirectories))
         
     def solutionSelected(self):
         selection = self.solutionWidget.currentItem()
@@ -208,43 +191,48 @@ class MainWindow(QMainWindow):
         self.currentSolution = function
         self._updateSolutionSelection()
         self._showSolution()
-            
-    def _updateSolutionSelection(self):
-        self.clearWidget(self.solutionSelector)
-
-        pareto = QCheckBox("Pareto")
-        pareto.setChecked(True)
-        pareto.stateChanged.connect(self._showSolution)
-        self.solutionSelector.layout().addWidget(pareto)
-
-        solution = QCheckBox("Solution")
+        
+    def getImplementationName(self, directory):
+        directory = str(directory)
+        slash = max(directory.rfind("/"), directory.rfind("\\"))
+        return directory[slash+1:]
+    
+    def addSolutionForSelection(self, name):
+        solution = QCheckBox(name)
         solution.setChecked(True)
         solution.stateChanged.connect(self._showSolution)
         self.solutionSelector.layout().addWidget(solution)
+        self.solutionSelector.layout().update()
+            
+    def _updateSolutionSelection(self):
+        self.clearWidget(self.solutionSelector)
+        
+        for directory in self.implementationDirectories:
+            self.addSolutionForSelection(self.getImplementationName(directory))
         
     def _showSolution(self):
         sol = self.currentSolution
         if sol is None:
             return
         
-        if sol.variablePareto is None and sol.variableSolution.count() == 0 and self.showVariablesRadio.isEnabled():
+        if len(sol.variableImplementation) == 0 and self.showVariablesRadio.isEnabled():
             self.showVariablesRadio.setEnabled(False)
             if self.showVariablesRadio.isChecked():
                 self.showSolutionsRadio.setChecked(True)
         else:
             self.showVariablesRadio.setEnabled(True)
         
-        if sol.functionPareto is None and sol.functionSolution.count() == 0 and self.showSolutionsRadio.isEnabled():
+        if len(sol.functionImplementation) == 0 and self.showSolutionsRadio.isEnabled():
             self.showSolutionsRadio.setEnabled(False)
             if self.showSolutionsRadio.isChecked():
                 self.showVariablesRadio.setChecked(True)
         else:
             self.showSolutionsRadio.setEnabled(True)
         
-        if self.showSolutionsRadio.isChecked():
-            self.generationSlider.setMaximum(sol.functionSolution.count())
-        else:
-            self.generationSlider.setMaximum(sol.variableSolution.count())
+#        if self.showSolutionsRadio.isChecked():
+#            self.generationSlider.setMaximum(sol.functionImplementation.count())
+#        else:
+#            self.generationSlider.setMaximum(sol.variableImplementation.count())
         self._exportToImage()
         
     def _getSolutionsToPlot(self):
@@ -252,17 +240,18 @@ class MainWindow(QMainWindow):
         generation = self.generationSlider.value()
         self.generationLabel.setText("Generation: %d" % generation)
         
-        solutions = []
-        showPareto = self.solutionSelector.layout().itemAt(0).widget().isChecked()
-        showSolution = self.solutionSelector.layout().itemAt(1).widget().isChecked()
-        if self.showSolutionsRadio.isChecked():
-            solutions.append(sol.functionPareto if showPareto else None)
-            if showSolution:
-                solutions.append(sol.functionSolution.getSolutions()[generation-1])
-        else:
-            solutions.append(sol.variablePareto if showPareto else None)
-            if showSolution:
-                solutions.append(sol.variableSolution.getSolutions()[generation-1])
+        solutions = {}
+        for i in xrange(0, self.solutionSelector.layout().count()):
+            implementationItem = self.solutionSelector.layout().itemAt(i).widget()
+            if implementationItem.isChecked():
+                solution = None
+                name = str(implementationItem.text())
+                if self.showSolutionsRadio.isChecked():
+                    solution = sol.getFunctionSolution(name)
+                else:
+                    solution = sol.getVariableSolution(name)
+                if solution is not None:
+                    solutions[name] = solution.getSolutions()[generation-1]
             
         return solutions
             
@@ -291,43 +280,52 @@ class MainWindow(QMainWindow):
             f.close()
             
     def scanDirectory(self):
-        if self.currentDir is None:
-            return
-        
-        for function in self.solutions.values():
-            if function.functionPareto is None and function.variablePareto is None:
-                del self.solutions[function.functionName]
-            else:
-                function.clear()
+        if len(self.implementationDirectories) > 0:
+            self._scanDirectories([self.implementationDirectories[-1]])
+    
+    def scanAllDirectories(self):
+        self._scanDirectories(self.implementationDirectories)
+    
+    def _scanDirectories(self, directories):
+#        for function in self.solutions.values():
+#            if function.functionPareto is None and function.variablePareto is None:
+#                del self.solutions[function.functionName]
+#            else:
+#            function.clear()
                 
-        for filename in dircache.listdir(self.currentDir):
-            filename = str(self.currentDir + "/" + filename)
-#            fileType, _ = mimetypes.guess_type(filename)
-#            print fileType, filename
-            #if fileType is None or "text" not in fileType or not self.isSolutionFile(filename):
-            if not self.isSolutionFile(filename):
+        for directory in directories:
+            if not os.path.exists(directory) or not os.path.isdir(directory):
                 continue
             
-            functionName = self.getFunctionName(filename)
-            genPos = max(-1, functionName.rfind("."), functionName.rfind("-"), functionName.rfind("_"))
-            generation = 1 << 30
-            if genPos >= 0:
-                try:
-                    generation = int(functionName[genPos+1:])
-                    functionName = functionName[:genPos]
-                except:
-                    pass
+            implementationName = self.getImplementationName(directory)
+            for filename in dircache.listdir(directory):
+                filename = str(directory + "/" + filename)
+    #            fileType, _ = mimetypes.guess_type(filename)
+    #            print fileType, filename
+                #if fileType is None or "text" not in fileType or not self.isSolutionFile(filename):
+                if not self.isSolutionFile(filename):
+                    continue
                 
-            if functionName in self.solutions:
-                function = self.solutions[functionName]
-            else:
-                function = MOSolution(functionName)
-                self.solutions[functionName] = function
-                
-            if self.isFunctionFile(filename):
-                function.addFunctionSolution(filename, generation)
-            else:
-                function.addVariableSolution(filename, generation)
+                functionName = self.getFunctionName(filename)
+                genPos = max(-1, functionName.rfind("."), functionName.rfind("-"), functionName.rfind("_"))
+                generation = 1 << 30
+                if genPos >= 0:
+                    try:
+                        generation = int(functionName[genPos+1:])
+                        functionName = functionName[:genPos]
+                    except:
+                        pass
+                    
+                if functionName in self.solutions:
+                    function = self.solutions[functionName]
+                else:
+                    function = MOSolution(functionName)
+                    self.solutions[functionName] = function
+                    
+                if self.isFunctionFile(filename):
+                    function.addFunctionSolution(implementationName, filename, generation)
+                else:
+                    function.addVariableSolution(implementationName, filename, generation)
             
         self.updateUI()
         
@@ -347,12 +345,19 @@ class MainWindow(QMainWindow):
         for i in xrange(layout.count()-1, -1, -1):
             layout.removeItem(layout.itemAt(i))
     
+    def _hasNonPareto(self, implementations):
+        if len(implementations) > 1:
+            return True
+        if len(implementations) == 0:
+            return False
+        return __PARETO__ not in implementations.keys()
+    
     def updateUI(self):
         self.statusBar().showMessage("Updating solutions...")
                 
         solutions = []
         for solution in self.solutions.values():
-            if solution.functionSolution.count() > 0 or solution.variableSolution.count():
+            if self._hasNonPareto(solution.functionImplementation) or self._hasNonPareto(solution.variableImplementation):
                 solutions.append(solution)
             
         solutions.sort(cmp=None, key=lambda sol: sol.functionName.lower())
@@ -369,27 +374,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Updated!", 5000)
 
     def loadInitialData(self):
-        self.solutions = dict()
-        for filename in dircache.listdir(self.dataDir):
-            functionName = self.getFunctionName(filename)
-            filename = self.dataDir + "/" + filename
-            
-            if functionName in self.solutions:
-                function = self.solutions[functionName]
-            else:
-                function = MOSolution(functionName)
-                self.solutions[functionName] = function
-                
-            if self.isFunctionFile(filename):
-                function.setFunctionPareto(filename)
-            else:
-                function.setVariablePareto(filename)
-        
-        self.scanDirectory()
-        if self.solutionWidget.count() > 0:
-            self.statusBar().showMessage("Ready!", 5000)
-        else:
-            self.statusBar().showMessage("WARNING: No Pareto front files found.")
+        self.solutions = {}
+        self.scanAllDirectories()
+        self.statusBar().showMessage("Ready!", 5000)
             
     def closeEvent(self, event):
         self.statusBar().showMessage("Closing...")

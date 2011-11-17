@@ -3,7 +3,6 @@ Created on Oct 9, 2011
 
 @author: Moises Osorio [WCoder]
 """
-
 class MOSolution:
     """
     Handles a set of solutions to the same problem.
@@ -14,28 +13,36 @@ class MOSolution:
         Creates a solution handler.
         """
         self.functionName = functionName
-        self.functionPareto = None
-        self.variablePareto = None
-        self.functionSolution = MOSolutionHistory()
-        self.variableSolution = MOSolutionHistory()
+        self.functionImplementation = {}
+        self.variableImplementation = {}
     
-    def setFunctionPareto(self, functionPareto):
-        self.functionPareto = functionPareto
+    def addFunctionSolution(self, solutionName, functionSolution, generation):
+        if solutionName not in self.functionImplementation:
+            self.functionImplementation[solutionName] = MOImplementation();
+        self.functionImplementation[solutionName].addImplementation(functionSolution, generation)
         
-    def setVariablePareto(self, variablePareto):
-        self.variablePareto = variablePareto
+    def addVariableSolution(self, solutionName, variableSolution, generation):
+        if solutionName not in self.variableImplementation:
+            self.variableImplementation[solutionName] = MOImplementation();
+        self.variableImplementation[solutionName].addImplementation(variableSolution, generation)
         
-    def addFunctionSolution(self, functionSolution, generation):
-        self.functionSolution.addSolution(functionSolution, generation)
+    def getFunctionSolution(self, name):
+        if name not in self.functionImplementation.keys():
+            return None
+        return self.functionImplementation[name]
         
-    def addVariableSolution(self, variableSolution, generation):
-        self.variableSolution.addSolution(variableSolution, generation)
+    def getVariableSolution(self, name):
+        if name not in self.variableImplementation.keys():
+            return None
+        return self.variableImplementation[name]
         
     def clear(self):
-        self.functionSolution.clear()
-        self.variableSolution.clear()
+        for solution in self.functionImplementation.values():
+            solution.clear()
+        for solution in self.variableImplementation.values():
+            solution.clear()
         
-class MOSolutionHistory:
+class MOImplementation:
     """
     History for one L{MOSolution}.
     """
@@ -43,7 +50,7 @@ class MOSolutionHistory:
     def __init__(self):
         self.solutions = []
         
-    def addSolution(self, solution, generation):
+    def addImplementation(self, solution, generation):
         self.solutions.append((generation, solution))
         
     def count(self):
