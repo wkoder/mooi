@@ -167,10 +167,10 @@ class MainWindow(QMainWindow):
     
     def _exportToImage(self, solution, generation, filename):
         toPlot = self._getSolutionsToPlot(solution, generation)
+        axis = ["x1", "x2", "x3"]
         if self.showSolutionsRadio.isChecked():
-            self.plot.plotSolution(toPlot, self.currentSolution.functionName, "F1", "F2", "F3", filename)
-        else:
-            self.plot.plotSolution(toPlot, self.currentSolution.functionName, "x1", "x2", "x3", filename)
+            axis = ["F1", "F2", "F3"]
+        self.plot.plotSolution(toPlot, self.currentSolution.functionName, axis[0], axis[1], axis[2], filename)
                 
     def helpAbout(self):
         QMessageBox.about(self, "About Image Changer",
@@ -260,7 +260,7 @@ class MainWindow(QMainWindow):
         self._exportCurrentImage()
         
     def _getSolutionsToPlot(self, sol, generation):
-        solutions = {}
+        solutions = []
         for i in xrange(0, self.solutionSelector.layout().count()):
             implementationItem = self.solutionSelector.layout().itemAt(i).widget()
             if implementationItem.isChecked():
@@ -276,7 +276,7 @@ class MainWindow(QMainWindow):
                     for p in xrange(3):
                         if k & (1 << p) > 0:
                             rgb[p] = 255
-                    solutions[name] = [solution.getSolutions()[generation-1], rgb]
+                    solutions.append([name, solution.getSolutions()[generation-1], rgb])
             
         return solutions
             

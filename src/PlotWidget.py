@@ -31,8 +31,11 @@ class PlotWidget(QLabel):
         
         self._startPlotting(title, xlabel, ylabel, zlabel)
         idx = 1
-        for solutionName in solutions.keys():
-            self._plotFile(solutionName, solutions[solutionName][0], solutions[solutionName][1], idx)
+        for solution in solutions:
+            solutionName = solution[0]
+            solutionFile = solution[1]
+            rgb = solution[2]
+            self._plotFile(solutionName, solutionFile, rgb, idx)
             idx = idx + 1
         self._endPlotting(filename)
         
