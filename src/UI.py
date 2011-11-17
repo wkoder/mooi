@@ -251,7 +251,12 @@ class MainWindow(QMainWindow):
                 else:
                     solution = sol.getVariableSolution(name)
                 if solution is not None:
-                    solutions[name] = solution.getSolutions()[generation-1]
+                    rgb = 3*[0]
+                    k = i + 1
+                    for p in xrange(3):
+                        if k & (1 << p) > 0:
+                            rgb[p] = 255
+                    solutions[name] = [solution.getSolutions()[generation-1], rgb]
             
         return solutions
             

@@ -29,8 +29,10 @@ class PlotWidget(QLabel):
             return
         
         self._startPlotting(title, xlabel, ylabel, zlabel)
+        idx = 1
         for solutionName in solutions.keys():
-            self._plotFile(solutions[solutionName], solutionName)
+            self._plotFile(solutionName, solutions[solutionName][0], solutions[solutionName][1], idx)
+            idx = idx + 1
         self._endPlotting(filename)
         
     def _startPlotting(self, title, xlabel, ylabel, zlabel):
@@ -52,7 +54,7 @@ class PlotWidget(QLabel):
             self.tempNames.append(filename)
             self.setPlotPixmap(filename)
         
-    def _plotFile(self, filename, title):
+    def _plotFile(self, title, filename, color, idx):
         points = []
         f = open(filename, "r")
         for line in f:
@@ -60,9 +62,9 @@ class PlotWidget(QLabel):
             if len(point) > 0:
                 points.append(point)
         points.sort()
-        self._plot(points, title)
+        self._plot(title, points, color, idx)
         
-    def _plot(self, points, title):
+    def _plot(self, title, points, color, idx):
         x = []
         y = []
         z = None
@@ -78,7 +80,19 @@ class PlotWidget(QLabel):
             data = Gnuplot.Data(x, y, title=title)
         else:
             data = Gnuplot.Data(x, y, z, title=title)
+        data.set_option_colonsep("ls", "%d" % idx)
+        if "ls" not in data._option_sequence: # HACK!
+            data._option_sequence.insert(0, "ls")
             
+        rgb = ("#%2x%2x%2x" % (color[0], color[1], color[2])).replace(" ", "0")
+        self.gp("set style line %d linecolor rgb \"%s\"" % (idx, rgb))
+#        for idx in xrange(1, 1000):
+#            
+#            s = "set style line %d linecolor rgb \"%s\" lt 3 lw 3" % (idx, rgb)
+#            print s
+#            self.gp(s)
+#        self.gp("set style line 3 linecolor rgb \"%s\" lt 3 lw 3" % (rgb))
+        #        self.gp("set style data linecolor rgb \"%s\"" % rgb)
         if self.gp.plotted:
             self.gp.replot(data)
         elif z is None: # 2D
