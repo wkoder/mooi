@@ -148,7 +148,7 @@ class MainWindow(QMainWindow):
     def _exportCurrentImage(self, filename=None):
         generation = self.generationSlider.value()
         self.generationLabel.setText("Generation: %d" % generation)
-        self._exportToImage(self.currentSolution, generation, filename)
+        self._exportToImage(self.currentSolution, generation, self.showSolutionsRadio.isChecked(), filename)
     
     def exportAllImages(self):
         settings = QSettings()
@@ -161,16 +161,17 @@ class MainWindow(QMainWindow):
 #        for solutionName in self.solutions.keys():
         for i in xrange(self.solutionWidget.count()):
             solutionName = str(self.solutionWidget.item(i).text())
-            filename = directory + "/" + solutionName + ".png"
-            self._exportToImage(self.solutions[solutionName], 0, filename)
+            filename = directory + "/" + solutionName
+            self._exportToImage(self.solutions[solutionName], 0, True, filename + "_fun.png")
+            self._exportToImage(self.solutions[solutionName], 0, False, filename + "_var.png")
         self.statusBar().showMessage("Images saved!", 5000)
     
-    def _exportToImage(self, solution, generation, filename):
-        toPlot = self._getSolutionsToPlot(solution, generation)
-        if self.showSolutionsRadio.isChecked():
-            self.plot.plotSolution(toPlot, self.currentSolution.functionName, "F1", "F2", "F3", filename)
-        else:
-            self.plot.plotSolution(toPlot, self.currentSolution.functionName, "x1", "x2", "x3", filename)
+    def _exportToImage(self, solution, generation, functionSpace, filename):
+        toPlot = self._getSolutionsToPlot(solution, generation, functionSpace)
+        axis = ["x1", "x2", "x3"]
+        if functionSpace:
+            axis = ["F1", "F2", "F3"]
+        self.plot.plotSolution(toPlot, solution.functionName, None if functionSpace else "Parameter space", axis[0], axis[1], axis[2], filename)
                 
     def helpAbout(self):
         QMessageBox.about(self, "About Image Changer",
@@ -259,14 +260,14 @@ class MainWindow(QMainWindow):
 #            self.generationSlider.setMaximum(sol.variableImplementation.count())
         self._exportCurrentImage()
         
-    def _getSolutionsToPlot(self, sol, generation):
-        solutions = {}
+    def _getSolutionsToPlot(self, sol, generation, functionSpace):
+        solutions = []
         for i in xrange(0, self.solutionSelector.layout().count()):
             implementationItem = self.solutionSelector.layout().itemAt(i).widget()
             if implementationItem.isChecked():
                 solution = None
                 name = str(implementationItem.text())
-                if self.showSolutionsRadio.isChecked():
+                if functionSpace:
                     solution = sol.getFunctionSolution(name)
                 else:
                     solution = sol.getVariableSolution(name)
@@ -276,7 +277,7 @@ class MainWindow(QMainWindow):
                     for p in xrange(3):
                         if k & (1 << p) > 0:
                             rgb[p] = 255
-                    solutions[name] = [solution.getSolutions()[generation-1], rgb]
+                    solutions.append([name, solution.getSolutions()[generation-1], rgb])
             
         return solutions
             

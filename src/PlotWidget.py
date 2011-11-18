@@ -23,23 +23,26 @@ class PlotWidget(QLabel):
         self.setAlignment(Qt.AlignCenter)
         self.clear()
         
-    def plotSolution(self, solutions, title, xlabel, ylabel, zlabel, filename=None):
+    def plotSolution(self, solutions, title, subtitle, xlabel, ylabel, zlabel, filename=None):
         if filename is None:
             self.clear()
         if len(solutions) == 0:
             return
         
-        self._startPlotting(title, xlabel, ylabel, zlabel)
+        self._startPlotting(title, subtitle, xlabel, ylabel, zlabel)
         idx = 1
-        for solutionName in solutions.keys():
-            self._plotFile(solutionName, solutions[solutionName][0], solutions[solutionName][1], idx)
+        for solution in solutions:
+            solutionName = solution[0]
+            solutionFile = solution[1]
+            rgb = solution[2]
+            self._plotFile(solutionName, solutionFile, rgb, idx)
             idx = idx + 1
         self._endPlotting(filename)
         
-    def _startPlotting(self, title, xlabel, ylabel, zlabel):
+    def _startPlotting(self, title, subtitle, xlabel, ylabel, zlabel):
         self.gp = Gnuplot.Gnuplot(persist=0)
         self.gp("set terminal unknown")
-        self.gp.title(title)
+        self.gp.title(title + ("" if subtitle is None else "\\n" + subtitle))
         self.gp.xlabel(xlabel)
         self.gp.ylabel(ylabel)
         self.gp.zlabel(zlabel)
