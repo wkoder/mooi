@@ -12,6 +12,8 @@ import Gnuplot
 from PyQt4.QtCore import * #@UnusedWildImport
 from PyQt4.QtGui import * #@UnusedWildImport
 
+import Utils
+
 class PlotWidget(QLabel):
     """A L{QLabel} whose surface is painted with the current plot."""
     def __init__(self):
@@ -33,9 +35,9 @@ class PlotWidget(QLabel):
         idx = 1
         for solution in solutions:
             solutionName = solution[0]
-            solutionFile = solution[1]
+            points = solution[1]
             rgb = solution[2]
-            self._plotFile(solutionName, solutionFile, rgb, idx)
+            self._plotFile(solutionName, points, rgb, idx)
             idx = idx + 1
         self._endPlotting(filename)
         
@@ -58,14 +60,8 @@ class PlotWidget(QLabel):
             self.tempNames.append(filename)
             self.setPlotPixmap(filename)
         
-    def _plotFile(self, title, filename, color, idx):
-        points = []
-        f = open(filename, "r")
-        for line in f:
-            point = [float(x) for x in line.split()]
-            if len(point) > 0:
-                points.append(point)
-        points.sort()
+    def _plotFile(self, title, points, color, idx):
+#        points.sort()
         self._plot(title, points, color, idx)
         
     def _plot(self, title, points, color, idx):

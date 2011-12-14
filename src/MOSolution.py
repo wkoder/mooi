@@ -3,6 +3,9 @@ Created on Oct 9, 2011
 
 @author: Moises Osorio [WCoder]
 """
+
+import Utils
+
 class MOSolution:
     """
     Handles a set of solutions to the same problem.
@@ -52,16 +55,20 @@ class MOImplementation:
         
     def addImplementation(self, solution, generation):
         self.solutions.append((generation, solution))
+        self.solutions.sort()
         
     def count(self):
         return len(self.solutions)
     
     def getSolutions(self):
-        self.solutions.sort()
         solutions = []
         for _, solution in self.solutions:
             solutions.append(solution)
         return solutions
+    
+    def getSolutionPoints(self, idx):
+        _, solution = self.solutions[idx]
+        return Utils.readFile(solution)
     
     def clear(self):
         self.solutions = []

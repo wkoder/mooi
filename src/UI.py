@@ -15,6 +15,8 @@ from PyQt4.QtGui import * #@UnusedWildImport
 from PlotWidget import PlotWidget
 
 from MOSolution import MOSolution
+from MetricsPanel import MetricsPanel
+import Utils
 
 __VERSION__ = "1.0.0"
 __PARETO__ = "pareto"
@@ -74,7 +76,7 @@ class MainWindow(QMainWindow):
         self.solutionSelector.setLayout(QVBoxLayout())
         addSolutionButton = QPushButton("Add")
         addSolutionButton.clicked.connect(self.addImplementation)
-        removeSolutionButton = QPushButton("Remove")
+        removeSolutionButton = QPushButton("Remove unselected")
         removeSolutionButton.clicked.connect(self.removeImplementation)
         solutionSelectorButtons = QWidget()
         solutionSelectorButtons.setLayout(QHBoxLayout())
@@ -94,6 +96,9 @@ class MainWindow(QMainWindow):
         refreshButton = QPushButton("Refresh")
         refreshButton.clicked.connect(self.scanAllDirectories)
         
+        computeMetricsButton = QPushButton("Compute metrics")
+        computeMetricsButton.clicked.connect(self.computeMetricsAsync)
+        
         controlLayout = QVBoxLayout()
         controlLayout.addWidget(radioWidget)
         controlLayout.addWidget(self.generationLabel)
@@ -101,6 +106,7 @@ class MainWindow(QMainWindow):
         controlLayout.addWidget(self.solutionSelectorWidget)
         controlLayout.addStretch()
         controlLayout.addWidget(refreshButton)
+        controlLayout.addWidget(computeMetricsButton)
         controlLayout.addWidget(exportButton)
         controlLayout.addWidget(exportAllButton)
         controlWidget = QWidget()
@@ -110,6 +116,22 @@ class MainWindow(QMainWindow):
         controlDock.setWidget(controlWidget)
         controlDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.addDockWidget(Qt.LeftDockWidgetArea, controlDock)
+        
+        self.metrics = MetricsPanel()
+        metricsDock = QDockWidget("Metrics", self)
+        metricsDock.setObjectName("Metrics")
+        metricsDock.setWidget(self.metrics)
+        metricsDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        self.addDockWidget(Qt.BottomDockWidgetArea, metricsDock)
+        
+        exitAction = QAction(QIcon('exit.png'), '&Exit', self)        
+        exitAction.setShortcut('Ctrl+Q')
+        exitAction.setStatusTip('Exit application')
+        exitAction.triggered.connect(qApp.quit)
+        
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(exitAction)
         
         self.currentSolution = None
         self.implementationDirectories = []
@@ -124,9 +146,10 @@ class MainWindow(QMainWindow):
         
         paretoDirectory = os.path.dirname(__file__) + "/" + __PARETO__
         if not paretoDirectory in self.implementationDirectories and \
-            not __PARETO__ in map(self.getImplementationName, self.implementationDirectories):
+                not __PARETO__ in map(self.getImplementationName, self.implementationDirectories):
             self.implementationDirectories.insert(0, paretoDirectory)
-        
+            
+        self._updateSolutionSelection()
         QTimer.singleShot(0, self.loadInitialData)
 
     def shortenName(self, name, maxlen):
@@ -166,13 +189,32 @@ class MainWindow(QMainWindow):
             self._exportToImage(self.solutions[solutionName], 0, False, filename + "_var.png")
         self.statusBar().showMessage("Images saved!", 5000)
     
-    def _exportToImage(self, solution, generation, functionSpace, filename):
-        toPlot = self._getSolutionsToPlot(solution, generation, functionSpace)
+    def _exportToImage(self, problem, generation, functionSpace, filename):
+        toPlot = self._getSolutionsToPlot(problem, generation, functionSpace)
         axis = ["x1", "x2", "x3"]
         if functionSpace:
             axis = ["F1", "F2", "F3"]
-        self.plot.plotSolution(toPlot, solution.functionName, None if functionSpace else "Parameter space", axis[0], axis[1], axis[2], filename)
-                
+        self.plot.plotSolution(toPlot, problem.functionName, None if functionSpace else "Parameter space", axis[0], axis[1], axis[2], filename)
+        self.metrics.clear()
+    
+    def computeMetricsAsync(self):
+        self.statusBar().showMessage("Computing metrics...")
+        QTimer.singleShot(0, self.computeMetrics)
+        
+    def computeMetrics(self):
+        self._computeMetrics(self.currentSolution)
+        self.statusBar().showMessage("Metrics computed!", 5000)
+        
+    def _computeMetrics(self, problem):
+        implementationNames = [self.getImplementationName(directory) for directory in self.implementationDirectories]
+        solutions = []
+        for name in implementationNames:
+            if name.lower() != __PARETO__:
+                impl = problem.getFunctionSolution(name)
+                solutions.append([name, [impl.getSolutionPoints(idx) for idx in xrange(impl.count())]])
+        
+        self.metrics.updateMetrics(problem.getFunctionSolution(__PARETO__).getSolutionPoints(0), solutions)
+        
     def helpAbout(self):
         QMessageBox.about(self, "About Image Changer",
             """<b>Multi-Objective Optimization Interface</b> v%s
@@ -198,8 +240,9 @@ class MainWindow(QMainWindow):
     def removeImplementation(self):
         layout = self.solutionSelector.layout()
         for i in xrange(layout.count()-1, -1, -1):
-            if layout.itemAt(i).widget().isChecked():
+            if not layout.itemAt(i).widget().isChecked():
                 layout.removeItem(layout.itemAt(i))
+                layout.update()
                 del self.implementationDirectories[i]
                 
         settings = QSettings()
@@ -214,7 +257,7 @@ class MainWindow(QMainWindow):
     def showSolution(self, functionName):
         function = self.solutions[str(functionName)]
         self.currentSolution = function
-        self._updateSolutionSelection()
+#        self._updateSolutionSelection()
         self._showSolution()
         
     def getImplementationName(self, directory):
@@ -260,7 +303,7 @@ class MainWindow(QMainWindow):
 #            self.generationSlider.setMaximum(sol.variableImplementation.count())
         self._exportCurrentImage()
         
-    def _getSolutionsToPlot(self, sol, generation, functionSpace):
+    def _getSolutionsToPlot(self, problem, generation, functionSpace):
         solutions = []
         for i in xrange(0, self.solutionSelector.layout().count()):
             implementationItem = self.solutionSelector.layout().itemAt(i).widget()
@@ -268,42 +311,19 @@ class MainWindow(QMainWindow):
                 solution = None
                 name = str(implementationItem.text())
                 if functionSpace:
-                    solution = sol.getFunctionSolution(name)
+                    solution = problem.getFunctionSolution(name)
                 else:
-                    solution = sol.getVariableSolution(name)
+                    solution = problem.getVariableSolution(name)
                 if solution is not None:
                     rgb = 3*[0]
                     k = i + 1
                     for p in xrange(3):
                         if k & (1 << p) > 0:
                             rgb[p] = 255
-                    solutions.append([name, solution.getSolutions()[generation-1], rgb])
+                    points = solution.getSolutionPoints(generation-1)
+                    solutions.append([name, points, rgb])
             
         return solutions
-            
-    def isSolutionFile(self, filename):
-        if not os.path.exists(filename) or os.path.isdir(filename):
-            return False
-        
-        f = open(filename)
-        try:
-            tries = 5 # Try 5 times to check if the file is valid
-            lastlen = -1
-            for line in f:
-                points = [float(x) for x in line.split()]
-                if lastlen != -1 and len(points) != lastlen:
-                    return False
-                
-                lastlen = len(points)
-                tries = tries - 1
-                if tries == 0:
-                    break
-                
-            return lastlen >= 2
-        except Exception:
-            return False
-        finally:
-            f.close()
             
     def scanDirectory(self):
         if len(self.implementationDirectories) > 0:
@@ -313,12 +333,6 @@ class MainWindow(QMainWindow):
         self._scanDirectories(self.implementationDirectories)
     
     def _scanDirectories(self, directories):
-#        for function in self.solutions.values():
-#            if function.functionPareto is None and function.variablePareto is None:
-#                del self.solutions[function.functionName]
-#            else:
-#            function.clear()
-                
         for directory in directories:
             if not os.path.exists(directory) or not os.path.isdir(directory):
                 continue
@@ -329,10 +343,10 @@ class MainWindow(QMainWindow):
     #            fileType, _ = mimetypes.guess_type(filename)
     #            print fileType, filename
                 #if fileType is None or "text" not in fileType or not self.isSolutionFile(filename):
-                if not self.isSolutionFile(filename):
+                if not Utils.isSolutionFile(filename):
                     continue
                 
-                functionName = self.getFunctionName(filename)
+                functionName = Utils.getFunctionName(filename)
                 genPos = max(-1, functionName.rfind("."), functionName.rfind("-"), functionName.rfind("_"))
                 generation = 1 << 30
                 if genPos >= 0:
@@ -348,23 +362,12 @@ class MainWindow(QMainWindow):
                     function = MOSolution(functionName)
                     self.solutions[functionName] = function
                     
-                if self.isFunctionFile(filename):
+                if Utils.isFunctionFile(filename):
                     function.addFunctionSolution(implementationName, filename, generation)
                 else:
                     function.addVariableSolution(implementationName, filename, generation)
             
         self.updateUI()
-        
-    def getFunctionName(self, filename):
-        filename = filename[filename.rfind("/")+1:]
-        if "." in filename:
-            filename = filename[:filename.rfind(".")]
-        return filename.lower().replace("_fun", "").replace("_var", "").replace("fun", "").replace("var", "")\
-            .replace("front_", "").replace("pareto_", "").replace("pf_", "").replace("_pf", "").replace("_front", "")\
-            .replace("_pareto", "").replace("front", "").replace("pareto", "").title()
-        
-    def isFunctionFile(self, filename):
-        return "var" not in filename.lower()
     
     def clearWidget(self, widget):
         layout = widget.layout()
@@ -387,7 +390,7 @@ class MainWindow(QMainWindow):
                 solutions.append(solution)
             
         solutions.sort(cmp=None, key=lambda sol: sol.functionName.lower())
-        self.clearWidget(self.solutionSelector)
+#        self.clearWidget(self.solutionSelector)
         selectedRow = self.solutionWidget.currentRow()
         self.solutionWidget.clear()
         for solution in solutions:
