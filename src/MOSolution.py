@@ -67,7 +67,7 @@ class MOImplementation:
         return solutions
     
     def getSolutionPoints(self, idx):
-        _, solution = self.solutions[idx]
+        _, solution = self.solutions[idx % len(self.solutions)]
         return Utils.readFile(solution)
     
     def clear(self):

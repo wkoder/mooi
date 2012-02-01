@@ -93,11 +93,11 @@ class MainWindow(QMainWindow):
         exportAllButton = QPushButton("Export all images")
         exportAllButton.clicked.connect(self.exportAllImages)
         
-        refreshButton = QPushButton("Refresh")
-        refreshButton.clicked.connect(self.scanAllDirectories)
-        
         computeMetricsButton = QPushButton("Compute metrics")
         computeMetricsButton.clicked.connect(self.computeMetricsAsync)
+        
+        refreshButton = QPushButton("Refresh")
+        refreshButton.clicked.connect(self.scanAllDirectories)
         
         controlLayout = QVBoxLayout()
         controlLayout.addWidget(radioWidget)
@@ -105,8 +105,8 @@ class MainWindow(QMainWindow):
         controlLayout.addWidget(self.generationSlider)
         controlLayout.addWidget(self.solutionSelectorWidget)
         controlLayout.addStretch()
-        controlLayout.addWidget(refreshButton)
         controlLayout.addWidget(computeMetricsButton)
+        controlLayout.addWidget(refreshButton)
         controlLayout.addWidget(exportButton)
         controlLayout.addWidget(exportAllButton)
         controlWidget = QWidget()
@@ -129,8 +129,14 @@ class MainWindow(QMainWindow):
         exitAction.setStatusTip('Exit application')
         exitAction.triggered.connect(qApp.quit)
         
+        copyAction = QAction("&Copy",  self)
+        copyAction.setShortcut("Ctrl+C")
+        copyAction.setStatusTip('Copy metrics')
+        copyAction.triggered.connect(self.metrics.copyMetrics)
+        
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(copyAction)
         fileMenu.addAction(exitAction)
         
         self.currentSolution = None
@@ -146,12 +152,15 @@ class MainWindow(QMainWindow):
         
         paretoDirectory = os.path.dirname(__file__) + "/" + __PARETO__
         if not paretoDirectory in self.implementationDirectories and \
-                not __PARETO__ in map(self.getImplementationName, self.implementationDirectories):
+                not __PARETO__ in self.getImplementations():
             self.implementationDirectories.insert(0, paretoDirectory)
             
         self._updateSolutionSelection()
         QTimer.singleShot(0, self.loadInitialData)
-
+        
+    def getImplementations(self):
+        return map(self.getImplementationName, self.implementationDirectories)
+        
     def shortenName(self, name, maxlen):
         if len(name) <= maxlen:
             return name
@@ -206,9 +215,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Metrics computed!", 5000)
         
     def _computeMetrics(self, problem):
-        implementationNames = [self.getImplementationName(directory) for directory in self.implementationDirectories]
         solutions = []
-        for name in implementationNames:
+        for name in self.getImplementations():
             if name.lower() != __PARETO__:
                 impl = problem.getFunctionSolution(name)
                 solutions.append([name, [impl.getSolutionPoints(idx) for idx in xrange(impl.count())]])
@@ -297,10 +305,10 @@ class MainWindow(QMainWindow):
         else:
             self.showSolutionsRadio.setEnabled(True)
         
-#        if self.showSolutionsRadio.isChecked():
-#            self.generationSlider.setMaximum(sol.functionImplementation.count())
-#        else:
-#            self.generationSlider.setMaximum(sol.variableImplementation.count())
+        if self.showSolutionsRadio.isChecked():
+            self.generationSlider.setMaximum(max([sol.getFunctionSolution(impl).count() for impl in sol.functionImplementation]))
+        else:
+            self.generationSlider.setMaximum(max([sol.getVariableSolution(impl).count() for impl in sol.variableImplementation]))
         self._exportCurrentImage()
         
     def _getSolutionsToPlot(self, problem, generation, functionSpace):

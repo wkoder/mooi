@@ -11,6 +11,7 @@ import numpy
 #import time
 
 from Metrics import Metrics
+from couchdb.client import Row
 
 __EPS__ = 1e-6
 
@@ -36,6 +37,31 @@ class MetricsPanel(QWidget):
     def clear(self):
         self.table.setRowCount(0)
         self.table.setColumnCount(0)
+        
+    def copyMetrics(self):
+        selRange  = self.table.selectedRanges()[0] # Take the first range
+        topRow = selRange.topRow()
+        bottomRow = selRange.bottomRow()
+        rightColumn = selRange.rightColumn()
+        leftColumn = selRange.leftColumn()
+        clipStr = QString("\t")
+        for col in xrange(leftColumn, rightColumn+1):
+            clipStr.append(self.table.horizontalHeaderItem(col).text() + "\t")
+        clipStr.append("\n")
+        for row in xrange(topRow, bottomRow+1):
+            clipStr.append(self.table.verticalHeaderItem(row).text() + "\t")
+            for col in xrange(leftColumn, rightColumn+1):
+                cell = self.table.cellWidget(row, col)
+                if cell:
+                    clipStr.append(cell.text().replace("<b>", "").replace("</b>", ""))
+                else:
+                    clipStr.append(QString(""))
+                clipStr.append(QString("\t"))
+            clipStr.chop(1)
+            clipStr.append(QString("\n"))
+        
+        cb = QApplication.clipboard()
+        cb.setText(clipStr)
         
     def updateMetrics(self, optimalPareto, solutions):
         self.table.setColumnCount(len(solutions))
