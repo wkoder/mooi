@@ -23,6 +23,10 @@ __PARETO__ = "pareto"
 
 class MainWindow(QMainWindow):
     
+    __PREF_GEOM__ = "UI/Geometry"
+    __PREF_STATE__ = "UI/State"
+    __PREF_DIR__ = "Config/Directories"
+    
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
 
@@ -143,9 +147,9 @@ class MainWindow(QMainWindow):
         self.implementationDirectories = []
 
         settings = QSettings()
-        self.restoreState(settings.value("UI/State").toByteArray())
-        self.restoreGeometry(settings.value("UI/Geometry").toByteArray())
-        currentDirs = settings.value("Config/Directories")
+        self.restoreState(settings.value(MainWindow.__PREF_STATE__).toByteArray())
+        self.restoreGeometry(settings.value(MainWindow.__PREF_GEOM__).toByteArray())
+        currentDirs = settings.value(MainWindow.__PREF_DIR__)
         if currentDirs is not None:
             for directory in currentDirs.toList():
                 self.implementationDirectories.append(directory.toString())
@@ -242,19 +246,21 @@ class MainWindow(QMainWindow):
         self.implementationDirectories.append(directory)
         self.addSolutionForSelection(self.getImplementationName(directory))
         settings = QSettings()
-        settings.setValue("Config/Directories", QVariant(self.implementationDirectories))
+        settings.setValue(MainWindow.__PREF_DIR__, QVariant(self.implementationDirectories))
         QTimer.singleShot(0, self.scanDirectory)
         
     def removeImplementation(self):
         layout = self.solutionSelector.layout()
         for i in xrange(layout.count()-1, -1, -1):
-            if not layout.itemAt(i).widget().isChecked():
-                layout.removeItem(layout.itemAt(i))
+            item = layout.itemAt(i)
+            if not item.widget().isChecked():
+                item.widget().setVisible(False)
+                layout.removeItem(item)
                 layout.update()
                 del self.implementationDirectories[i]
                 
         settings = QSettings()
-        settings.setValue("Config/Directories", QVariant(self.implementationDirectories))
+        settings.setValue(MainWindow.__PREF_DIR__, QVariant(self.implementationDirectories))
         
     def solutionSelected(self):
         selection = self.solutionWidget.currentItem()
@@ -418,8 +424,8 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self.statusBar().showMessage("Closing...")
         settings = QSettings()
-        settings.setValue("UI/Geometry", self.saveGeometry())
-        settings.setValue("UI/State", self.saveState())
+        settings.setValue(MainWindow.__PREF_GEOM__, self.saveGeometry())
+        settings.setValue(MainWindow.__PREF_STATE__, self.saveState())
         self.plot.clear()
         
 def main():
