@@ -238,8 +238,8 @@ class MainWindow(QMainWindow):
             (__VERSION__, platform.python_version(), QT_VERSION_STR, PYQT_VERSION_STR, platform.system()))
 
     def addImplementation(self):
-        directory = None if len(self.implementationDirectories) == 0 else self.implementationDirectories[-1]
-        directory = QFileDialog.getExistingDirectory(self, "Select a directory to scan", directory)
+        directory = "" if len(self.implementationDirectories) == 0 else self.implementationDirectories[-1]
+        directory = QFileDialog.getExistingDirectory(self, "Select a directory to scan", directory, QFileDialog.ShowDirsOnly)
         if not os.path.exists(directory) or directory in self.implementationDirectories:
             return
         
