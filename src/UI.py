@@ -208,7 +208,6 @@ class MainWindow(QMainWindow):
         if functionSpace:
             axis = ["F1", "F2", "F3"]
         self.plot.plotSolution(toPlot, problem.functionName, None if functionSpace else "Parameter space", axis[0], axis[1], axis[2], filename)
-        self.metrics.clear()
     
     def computeMetricsAsync(self):
         self.statusBar().showMessage("Computing metrics...")
@@ -271,7 +270,7 @@ class MainWindow(QMainWindow):
     def showSolution(self, functionName):
         function = self.solutions[str(functionName)]
         self.currentSolution = function
-#        self._updateSolutionSelection()
+        self.metrics.clear()
         self._showSolution()
         
     def getImplementationName(self, directory):
