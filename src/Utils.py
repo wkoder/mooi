@@ -4,9 +4,10 @@ Created on Dec 11, 2011
 @author: Moises Osorio [WCoder]
 '''
 
+import math
+import numpy
 import os
 
-import numpy
 
 def dominates(x, y):
     """
@@ -47,6 +48,12 @@ def readFile(filename):
             points.append(point)
 
     f.close()
+    
+    maxPoints = 10000 # FIXME: Hack to speed it up
+    if len(points) > maxPoints:
+        skip = int(math.ceil(len(points) / maxPoints))
+        points = [points[i] for i in xrange(0, len(points), skip)]
+    
     return points
     
 def getFunctionName(filename):
