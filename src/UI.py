@@ -153,7 +153,7 @@ class MainWindow(QMainWindow):
         self.restoreGeometry(settings.value(MainWindow.__PREF_GEOM__).toByteArray())
 
         self.analyzer = Analyzer()
-        paretoDirectory = os.path.dirname(__file__) + "/resources/" + Analyzer.__PARETO__
+        paretoDirectory = os.path.dirname(__file__) + "/../resources/" + Analyzer.__PARETO__
         self.analyzer.setPareto(paretoDirectory)
         currentDirs = settings.value(MainWindow.__PREF_DIR__)
         if currentDirs is not None:
@@ -244,7 +244,7 @@ class MainWindow(QMainWindow):
         if self.analyzer.nResults == 0:
             directory = ""
         else:
-            directory = os.path.abspath(os.path.join(str(self.resultDirectories[-1]), os.path.pardir))
+            directory = os.path.abspath(os.path.join(str(self.analyzer.resultDirectories[-1]), os.path.pardir))
         directory = QFileDialog.getExistingDirectory(self, "Select a directory to scan", directory, QFileDialog.ShowDirsOnly)
         if not os.path.exists(directory) or directory in self.analyzer.resultDirectories:
             return
@@ -259,7 +259,7 @@ class MainWindow(QMainWindow):
         layout = self.solutionSelector.layout()
         for i in xrange(layout.count()-1, -1, -1):
             item = layout.itemAt(i)
-            if not item.widget().isChecked() and self.analyzer.resultNames[i] != Analyzer.__PARETO__:
+            if not item.widget().isChecked():# and self.analyzer.resultNames[i] != Analyzer.__PARETO__:
                 item.widget().setVisible(False)
                 layout.removeItem(item)
                 self.analyzer.removeResultDirectory(self.analyzer.resultDirectories[i])

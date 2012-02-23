@@ -18,9 +18,11 @@ class Analyzer:
         self.plotter = ResultPlotter()
         self.metrics = MetricsCalc()
         
+        self.pareto = None
         self.setResultDirectories([])
         
     def setPareto(self, pareto):
+        self.pareto = pareto
         self.addResultDirectory(pareto)
         
     def addResultDirectory(self, result):
@@ -41,6 +43,8 @@ class Analyzer:
         self.functions = {}
         self.nResults = 0
         
+        if self.pareto is not None:
+            self.setPareto(self.pareto)
         for result in results:
             self.addResultDirectory(result)
         
