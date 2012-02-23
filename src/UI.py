@@ -3,29 +3,26 @@ Created on Oct 3, 2011
 
 @author: Moises Osorio [WCoder]
 '''
-
-import sys
-import dircache
-import platform
-import os
-
+from Analyzer import Analyzer
+from MetricsPanel import MetricsPanel
+from PlotWidget import PlotWidget
 from PyQt4.QtCore import * #@UnusedWildImport
 from PyQt4.QtGui import * #@UnusedWildImport
-
-from PlotWidget import PlotWidget
-
-from MOSolution import MOSolution
-from MetricsPanel import MetricsPanel
-import Utils
+import os
+import platform
+import sys
+import tempfile
 
 __VERSION__ = "1.0.0"
-__PARETO__ = "pareto"
+__WEBSITE__ = "http://mooi.wkoder.com"
+__AUTHOR__ = "Moises Osorio"
 
 class MainWindow(QMainWindow):
     
     __PREF_GEOM__ = "UI/Geometry"
     __PREF_STATE__ = "UI/State"
     __PREF_DIR__ = "Config/Directories"
+    __PREF_SAVE__ = "Config/SaveDirectory"
     
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -48,13 +45,13 @@ class MainWindow(QMainWindow):
         status.setSizeGripEnabled(False)
         status.showMessage("Loading initial data...")
         
-        self.solutionWidget = QListWidget()
-        self.solutionWidget.itemSelectionChanged.connect(self.solutionSelected)
-        solutionDock = QDockWidget("Problems", self)
-        solutionDock.setObjectName("Problems")
-        solutionDock.setWidget(self.solutionWidget)
-        solutionDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
-        self.addDockWidget(Qt.RightDockWidgetArea, solutionDock)
+        self.functionWidget = QListWidget()
+        self.functionWidget.itemSelectionChanged.connect(self.solutionSelected)
+        rightDock = QDockWidget("Functions", self)
+        rightDock.setObjectName("Functions")
+        rightDock.setWidget(self.functionWidget)
+        rightDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        self.addDockWidget(Qt.RightDockWidgetArea, rightDock)
         
         self.showSolutionsRadio = QRadioButton("Functions")
         self.showSolutionsRadio.setChecked(True)
@@ -67,7 +64,7 @@ class MainWindow(QMainWindow):
         radioLayout.addWidget(self.showVariablesRadio)
         radioWidget.setLayout(radioLayout)
         
-        self.generationLabel = QLabel("Generation: 1")
+        self.generationLabel = QLabel("Run: 1")
         self.generationSlider = QSlider(Qt.Horizontal)
         self.generationSlider.setTickPosition(QSlider.TicksBothSides)
         self.generationSlider.setTracking(True)
@@ -81,7 +78,7 @@ class MainWindow(QMainWindow):
         addSolutionButton = QPushButton("Add")
         addSolutionButton.clicked.connect(self.addImplementation)
         removeSolutionButton = QPushButton("Remove unselected")
-        removeSolutionButton.clicked.connect(self.removeImplementation)
+        removeSolutionButton.clicked.connect(self.removeResult)
         solutionSelectorButtons = QWidget()
         solutionSelectorButtons.setLayout(QHBoxLayout())
         solutionSelectorButtons.layout().addWidget(addSolutionButton)
@@ -101,7 +98,7 @@ class MainWindow(QMainWindow):
         computeMetricsButton.clicked.connect(self.computeMetricsAsync)
         
         refreshButton = QPushButton("Refresh")
-        refreshButton.clicked.connect(self.scanAllDirectories)
+        refreshButton.clicked.connect(self.updateUI)
         
         controlLayout = QVBoxLayout()
         controlLayout.addWidget(radioWidget)
@@ -115,20 +112,20 @@ class MainWindow(QMainWindow):
         controlLayout.addWidget(exportAllButton)
         controlWidget = QWidget()
         controlWidget.setLayout(controlLayout)
-        controlDock = QDockWidget("Control", self)
-        controlDock.setObjectName("Control")
-        controlDock.setWidget(controlWidget)
-        controlDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
-        self.addDockWidget(Qt.LeftDockWidgetArea, controlDock)
+        leftDock = QDockWidget("Control", self)
+        leftDock.setObjectName("Control")
+        leftDock.setWidget(controlWidget)
+        leftDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        self.addDockWidget(Qt.LeftDockWidgetArea, leftDock)
         
         self.metrics = MetricsPanel()
-        metricsDock = QDockWidget("Metrics", self)
-        metricsDock.setObjectName("Metrics")
-        metricsDock.setWidget(self.metrics)
-        metricsDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
-        self.addDockWidget(Qt.BottomDockWidgetArea, metricsDock)
+        bottomDock = QDockWidget("Metrics", self)
+        bottomDock.setObjectName("Metrics")
+        bottomDock.setWidget(self.metrics)
+        bottomDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        self.addDockWidget(Qt.BottomDockWidgetArea, bottomDock)
         
-        exitAction = QAction(QIcon('exit.png'), '&Exit', self)        
+        exitAction = QAction('&Exit', self)        
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
         exitAction.triggered.connect(qApp.quit)
@@ -138,53 +135,77 @@ class MainWindow(QMainWindow):
         copyAction.setStatusTip('Copy metrics')
         copyAction.triggered.connect(self.metrics.copyMetrics)
         
+        aboutAction = QAction("&About",  self)
+        aboutAction.setStatusTip('About MOOI')
+        aboutAction.triggered.connect(self.helpAbout)
+        
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(copyAction)
+        fileMenu.addAction(aboutAction)
+        fileMenu.addSeparator()
         fileMenu.addAction(exitAction)
         
         self.currentSolution = None
-        self.implementationDirectories = []
 
         settings = QSettings()
         self.restoreState(settings.value(MainWindow.__PREF_STATE__).toByteArray())
         self.restoreGeometry(settings.value(MainWindow.__PREF_GEOM__).toByteArray())
+
+        self.analyzer = Analyzer()
+        paretoDirectory = os.path.dirname(__file__) + "/resources/" + Analyzer.__PARETO__
+        self.analyzer.setPareto(paretoDirectory)
         currentDirs = settings.value(MainWindow.__PREF_DIR__)
         if currentDirs is not None:
-            for directory in currentDirs.toList():
-                self.implementationDirectories.append(directory.toString())
-        
-        paretoDirectory = os.path.dirname(__file__) + "/" + __PARETO__
-        if not paretoDirectory in self.implementationDirectories and \
-                not __PARETO__ in self.getImplementations():
-            self.implementationDirectories.insert(0, paretoDirectory)
+            self.analyzer.setResultDirectories([directory.toString() for directory in currentDirs.toList()])
             
         self._updateSolutionSelection()
         QTimer.singleShot(0, self.loadInitialData)
         
-    def getImplementations(self):
-        return map(self.getImplementationName, self.implementationDirectories)
-        
-    def shortenName(self, name, maxlen):
-        if len(name) <= maxlen:
-            return name
-        return "..." + name[3 - maxlen:]
-
     def exportImage(self):
         settings = QSettings()
-        filename = settings.value("Config/SaveDirectory").toString()
+        filename = settings.value(MainWindow.__PREF_SAVE__)
+        if filename is None:
+            filename = os.path.dirname(__file__)
+        else:
+            filename = os.path.abspath(os.path.join(str(filename.toString()), os.path.pardir)) + "/"
+        filename += "%s_%s.png" % (self.currentSolution.functionName, "fun" if self.isFunctionSpaceSelected() else "var")
+        
         filename = QFileDialog.getSaveFileName(self, "Export image as", filename, ("PNG image (*.png)"))
         if filename is None or filename == "":
             return
 
-        settings.setValue("Config/SaveDirectory", QVariant(filename))
+        settings.setValue(MainWindow.__PREF_SAVE__, QVariant(filename))
         self._exportCurrentImage(filename)
         self.statusBar().showMessage("Image saved!", 5000)
     
+    def isFunctionSpaceSelected(self):
+        return self.showSolutionsRadio.isChecked()
+    
     def _exportCurrentImage(self, filename=None):
         generation = self.generationSlider.value()
-        self.generationLabel.setText("Generation: %d" % generation)
-        self._exportToImage(self.currentSolution, generation, self.showSolutionsRadio.isChecked(), filename)
+        self.generationLabel.setText("Run: %d" % generation)
+        
+        tmp = filename is None
+        if tmp:
+            prefix = "mooi_%s_" % self.currentSolution.functionName
+            filename = tempfile.mkstemp(prefix=prefix, suffix=".png", text=False)[1]
+        self.analyzer.exportToImage(self.currentSolution, generation, self.isFunctionSpaceSelected(), \
+                                    self._getSelectedResultNames(), filename)
+        if tmp:
+            self.plot.setPlotPixmap(filename)
+            try:
+                os.remove(filename)
+            except:
+                print >> sys.stderr, "Couldn't delete temporal file: %s" % filename
+    
+    def _getSelectedResultNames(self):
+        resultNames = []
+        for i in xrange(self.analyzer.nResults):
+            implementationItem = self.solutionSelector.layout().itemAt(i).widget()
+            if implementationItem.isChecked():
+                resultNames.append(str(implementationItem.text()))
+        return resultNames
     
     def exportAllImages(self):
         settings = QSettings()
@@ -193,94 +214,71 @@ class MainWindow(QMainWindow):
         if directory is None or not os.path.exists(directory):
             return
 
+        self.analyzer.exportAllImages(directory, self._getSelectedResultNames())
         settings.setValue("Config/SaveAllDirectory", QVariant(directory))
-#        for solutionName in self.solutions.keys():
-        for i in xrange(self.solutionWidget.count()):
-            solutionName = str(self.solutionWidget.item(i).text())
-            filename = directory + "/" + solutionName
-            self._exportToImage(self.solutions[solutionName], 0, True, filename + "_fun.png")
-            self._exportToImage(self.solutions[solutionName], 0, False, filename + "_var.png")
         self.statusBar().showMessage("Images saved!", 5000)
-    
-    def _exportToImage(self, problem, generation, functionSpace, filename):
-        toPlot = self._getSolutionsToPlot(problem, generation, functionSpace)
-        axis = ["x1", "x2", "x3"]
-        if functionSpace:
-            axis = ["F1", "F2", "F3"]
-        self.plot.plotSolution(toPlot, problem.functionName, None if functionSpace else "Parameter space", axis[0], axis[1], axis[2], filename)
     
     def computeMetricsAsync(self):
         self.statusBar().showMessage("Computing metrics...")
         QTimer.singleShot(0, self.computeMetrics)
         
     def computeMetrics(self):
-        self._computeMetrics(self.currentSolution)
+        self._computeMetrics(self.currentSolution.functionName)
         self.statusBar().showMessage("Metrics computed!", 5000)
         
-    def _computeMetrics(self, problem):
-        solutions = []
-        for name in self.getImplementations():
-            if name.lower() != __PARETO__:
-                impl = problem.getFunctionSolution(name)
-                solutions.append([name, [impl.getSolutionPoints(idx) for idx in xrange(impl.count())]])
-        
-        self.metrics.updateMetrics(problem.getFunctionSolution(__PARETO__).getSolutionPoints(0), solutions)
+    def _computeMetrics(self, functionName):
+        pareto = self.analyzer.getFunctionPareto(functionName)
+        solutions = self.analyzer.getFunctionResults(functionName, self._getSelectedResultNames())
+        self.metrics.updateMetrics(pareto, solutions)
         
     def helpAbout(self):
         QMessageBox.about(self, "About Image Changer",
             """<b>Multi-Objective Optimization Interface</b> v%s
-            <p>Copyright &copy; 2011 CINVESTAV-IPN
-            All rights reserved.
-            <p>This application can be used to perform
-            simple optimization analysis.
+            <p>Copyright &copy; 2011-2012 %s All rights reserved.
+            <p>This application can be used to perform simple optimization analysis.
+            <p><a href='%s'>%s</a>
             <p>Python %s - Qt %s - PyQt %s on %s""" % 
-            (__VERSION__, platform.python_version(), QT_VERSION_STR, PYQT_VERSION_STR, platform.system()))
+            (__VERSION__, __AUTHOR__, __WEBSITE__, __WEBSITE__, platform.python_version(), QT_VERSION_STR, PYQT_VERSION_STR, platform.system()))
 
     def addImplementation(self):
-        if len(self.implementationDirectories) == 0:
+        if self.analyzer.nResults == 0:
             directory = ""
         else:
-            directory = os.path.abspath(os.path.join(str(self.implementationDirectories[-1]), os.path.pardir))
+            directory = os.path.abspath(os.path.join(str(self.resultDirectories[-1]), os.path.pardir))
         directory = QFileDialog.getExistingDirectory(self, "Select a directory to scan", directory, QFileDialog.ShowDirsOnly)
-        if not os.path.exists(directory) or directory in self.implementationDirectories:
+        if not os.path.exists(directory) or directory in self.analyzer.resultDirectories:
             return
         
-        self.implementationDirectories.append(directory)
-        self.addSolutionForSelection(self.getImplementationName(directory))
+        self.analyzer.addResultDirectory(directory)
+        self.addSolutionForSelection(self.analyzer.getResultName(directory))
+
         settings = QSettings()
-        settings.setValue(MainWindow.__PREF_DIR__, QVariant(self.implementationDirectories))
-        QTimer.singleShot(0, self.scanDirectory)
+        settings.setValue(MainWindow.__PREF_DIR__, QVariant(self.analyzer.resultDirectories))
         
-    def removeImplementation(self):
+    def removeResult(self):
         layout = self.solutionSelector.layout()
         for i in xrange(layout.count()-1, -1, -1):
             item = layout.itemAt(i)
-            if not item.widget().isChecked():
+            if not item.widget().isChecked() and self.analyzer.resultNames[i] != Analyzer.__PARETO__:
                 item.widget().setVisible(False)
                 layout.removeItem(item)
-                layout.update()
-                del self.implementationDirectories[i]
+                self.analyzer.removeResultDirectory(self.analyzer.resultDirectories[i])
+        layout.update()
                 
         settings = QSettings()
-        settings.setValue(MainWindow.__PREF_DIR__, QVariant(self.implementationDirectories))
+        settings.setValue(MainWindow.__PREF_DIR__, QVariant(self.analyzer.resultDirectories))
         
     def solutionSelected(self):
-        selection = self.solutionWidget.currentItem()
+        selection = self.functionWidget.currentItem()
         if selection is None:
             return
-        self.showSolution(selection.text())
+        self.showSolution(str(selection.text()))
         
     def showSolution(self, functionName):
-        function = self.solutions[str(functionName)]
-        self.currentSolution = function
+        self.currentSolution = self.analyzer.getResultsForFunction(functionName)
         self.metrics.clear()
         self._showSolution()
         
-    def getImplementationName(self, directory):
-        directory = str(directory)
-        slash = max(directory.rfind("/"), directory.rfind("\\"))
-        return directory[slash+1:]
-    
     def addSolutionForSelection(self, name):
         solution = QCheckBox(name)
         solution.setChecked(True)
@@ -291,8 +289,8 @@ class MainWindow(QMainWindow):
     def _updateSolutionSelection(self):
         self.clearWidget(self.solutionSelector)
         
-        for directory in self.implementationDirectories:
-            self.addSolutionForSelection(self.getImplementationName(directory))
+        for directory in self.analyzer.resultDirectories:
+            self.addSolutionForSelection(self.analyzer.getResultName(directory))
         
     def _showSolution(self):
         sol = self.currentSolution
@@ -318,108 +316,30 @@ class MainWindow(QMainWindow):
         else:
             self.generationSlider.setMaximum(max([sol.getVariableSolution(impl).count() for impl in sol.variableImplementation]))
         self._exportCurrentImage()
-        
-    def _getSolutionsToPlot(self, problem, generation, functionSpace):
-        solutions = []
-        for i in xrange(0, self.solutionSelector.layout().count()):
-            implementationItem = self.solutionSelector.layout().itemAt(i).widget()
-            if implementationItem.isChecked():
-                solution = None
-                name = str(implementationItem.text())
-                if functionSpace:
-                    solution = problem.getFunctionSolution(name)
-                else:
-                    solution = problem.getVariableSolution(name)
-                if solution is not None:
-                    rgb = 3*[0]
-                    k = i + 1
-                    for p in xrange(3):
-                        if k & (1 << p) > 0:
-                            rgb[p] = 255
-                    points = solution.getSolutionPoints(generation-1)
-                    solutions.append([name, points, rgb])
-            
-        return solutions
-            
-    def scanDirectory(self):
-        if len(self.implementationDirectories) > 0:
-            self._scanDirectories([self.implementationDirectories[-1]])
-    
-    def scanAllDirectories(self):
-        self._scanDirectories(self.implementationDirectories)
-    
-    def _scanDirectories(self, directories):
-        for directory in directories:
-            if not os.path.exists(directory) or not os.path.isdir(directory):
-                continue
-            
-            implementationName = self.getImplementationName(directory)
-            for filename in dircache.listdir(directory):
-                filename = str(directory + "/" + filename)
-    #            fileType, _ = mimetypes.guess_type(filename)
-                #if fileType is None or "text" not in fileType or not self.isSolutionFile(filename):
-                if not Utils.isSolutionFile(filename):
-                    continue
-                
-                functionName = Utils.getFunctionName(filename)
-                genPos = max(-1, functionName.rfind("."), functionName.rfind("-"), functionName.rfind("_"))
-                generation = 1 << 30
-                if genPos >= 0:
-                    try:
-                        generation = int(functionName[genPos+1:])
-                        functionName = functionName[:genPos]
-                    except:
-                        pass
-                    
-                if functionName in self.solutions:
-                    function = self.solutions[functionName]
-                else:
-                    function = MOSolution(functionName)
-                    self.solutions[functionName] = function
-                    
-                if Utils.isFunctionFile(filename):
-                    function.addFunctionSolution(implementationName, filename, generation)
-                else:
-                    function.addVariableSolution(implementationName, filename, generation)
-            
-        self.updateUI()
-    
+      
     def clearWidget(self, widget):
         layout = widget.layout()
         for i in xrange(layout.count()-1, -1, -1):
             layout.removeItem(layout.itemAt(i))
     
-    def _hasNonPareto(self, implementations):
-        if len(implementations) > 1:
-            return True
-        if len(implementations) == 0:
-            return False
-        return __PARETO__ not in implementations.keys()
-    
     def updateUI(self):
         self.statusBar().showMessage("Updating solutions...")
                 
-        solutions = []
-        for solution in self.solutions.values():
-            if self._hasNonPareto(solution.functionImplementation) or self._hasNonPareto(solution.variableImplementation):
-                solutions.append(solution)
-            
-        solutions.sort(cmp=None, key=lambda sol: sol.functionName.lower())
-#        self.clearWidget(self.solutionSelector)
-        selectedRow = self.solutionWidget.currentRow()
-        self.solutionWidget.clear()
-        for solution in solutions:
+        selectedRow = self.functionWidget.currentRow()
+        self.functionWidget.clear()
+        names = [] + self.analyzer.getFunctionNames()
+        names.sort()
+        for name in names:
             item = QListWidgetItem()
-            item.setText(solution.functionName)
-            self.solutionWidget.addItem(item)
+            item.setText(name)
+            self.functionWidget.addItem(item)
             
-        if self.solutionWidget.count() > 0:
-            self.solutionWidget.setCurrentRow(selectedRow if selectedRow >= 0 and selectedRow < self.solutionWidget.count() else 0)
+        if self.functionWidget.count() > 0:
+            self.functionWidget.setCurrentRow(selectedRow if selectedRow >= 0 and selectedRow < self.functionWidget.count() else 0)
         self.statusBar().showMessage("Updated!", 5000)
 
     def loadInitialData(self):
-        self.solutions = {}
-        self.scanAllDirectories()
+        self.updateUI()
         self.statusBar().showMessage("Ready!", 5000)
             
     def closeEvent(self, event):
@@ -434,7 +354,7 @@ def main():
     app.setOrganizationName("Centro de Investigacion y de Estudios Avanzados del Instituto Politecnico Nacional (CINVESTAV-IPN)")
     app.setOrganizationDomain("cs.cinvestav.mx")
     app.setApplicationName("MOOI: Multi-Objective Optimization Interface")
-    #app.setWindowIcon(QIcon(":/icon.png"))
+    app.setWindowIcon(QIcon(os.path.dirname(__file__) + "/icon.png"))
     form = MainWindow()
     form.show()
     app.exec_()
