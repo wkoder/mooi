@@ -23,36 +23,42 @@ class MainWindow(QMainWindow):
     __PREF_STATE__ = "UI/State"
     __PREF_DIR__ = "Config/Directories"
     __PREF_SAVE__ = "Config/SaveDirectory"
+    __PREF_SAVE_ALL__ = "Config/SaveAllDirectory"
+    __RESOURCES_DIR__ = os.path.dirname(__file__) + "/../resources/"
     
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
-
-        self.setWindowTitle("MOOI: Multi-Objective Optimization Interface")
-        self.image = QImage()
-        self.dirty = False
-        self.filename = None
-        self.mirroredvertically = False
-        self.mirroredhorizontally = False
-        self.resize(840, 480)
         
+        self.analyzer = Analyzer()
+        self.currentSolution = None
+
+        self._buildUI()
+        self._loadSettings()
+        QTimer.singleShot(0, self._loadInitialData)
+
+    def _buildUI(self):
+        self.setWindowTitle("MOOI: Multi-Objective Optimization Interface")
+        self.resize(840, 480)
+        self.statusBar().setSizeGripEnabled(False)
+        self.statusBar().showMessage("Loading initial data...")
+        
+        # Plot widget
         self.plot = PlotWidget()
         self.plot.setMinimumSize(320, 480)
         self.plot.setAlignment(Qt.AlignCenter)
         self.plot.setContextMenuPolicy(Qt.ActionsContextMenu)
         self.setCentralWidget(self.plot)
 
-        status = self.statusBar()
-        status.setSizeGripEnabled(False)
-        status.showMessage("Loading initial data...")
-        
+        # Function widget
         self.functionWidget = QListWidget()
         self.functionWidget.itemSelectionChanged.connect(self.solutionSelected)
         rightDock = QDockWidget("Functions", self)
         rightDock.setObjectName("Functions")
         rightDock.setWidget(self.functionWidget)
-        rightDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        rightDock.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.RightDockWidgetArea, rightDock)
         
+        # Control widget
         self.showSolutionsRadio = QRadioButton("Functions")
         self.showSolutionsRadio.setChecked(True)
         self.showSolutionsRadio.toggled.connect(self._showSolution)
@@ -115,16 +121,18 @@ class MainWindow(QMainWindow):
         leftDock = QDockWidget("Control", self)
         leftDock.setObjectName("Control")
         leftDock.setWidget(controlWidget)
-        leftDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        leftDock.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.LeftDockWidgetArea, leftDock)
         
-        self.metrics = MetricsPanel()
+        # Metric widget
+        self.metrics = MetricsPanel(self.analyzer)
         bottomDock = QDockWidget("Metrics", self)
         bottomDock.setObjectName("Metrics")
         bottomDock.setWidget(self.metrics)
-        bottomDock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        bottomDock.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.BottomDockWidgetArea, bottomDock)
         
+        # Actions
         exitAction = QAction('&Exit', self)        
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
@@ -139,28 +147,26 @@ class MainWindow(QMainWindow):
         aboutAction.setStatusTip('About MOOI')
         aboutAction.triggered.connect(self.helpAbout)
         
+        # Menus
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(copyAction)
         fileMenu.addAction(aboutAction)
         fileMenu.addSeparator()
         fileMenu.addAction(exitAction)
-        
-        self.currentSolution = None
 
+    def _loadSettings(self):
         settings = QSettings()
         self.restoreState(settings.value(MainWindow.__PREF_STATE__).toByteArray())
         self.restoreGeometry(settings.value(MainWindow.__PREF_GEOM__).toByteArray())
 
-        self.analyzer = Analyzer()
-        paretoDirectory = os.path.dirname(__file__) + "/../resources/" + Analyzer.__PARETO__
+        paretoDirectory = MainWindow.__RESOURCES_DIR__ + Analyzer.__PARETO__
         self.analyzer.setPareto(paretoDirectory)
         currentDirs = settings.value(MainWindow.__PREF_DIR__)
         if currentDirs is not None:
             self.analyzer.setResultDirectories([directory.toString() for directory in currentDirs.toList()])
             
         self._updateSolutionSelection()
-        QTimer.singleShot(0, self.loadInitialData)
         
     def exportImage(self):
         settings = QSettings()
@@ -209,13 +215,13 @@ class MainWindow(QMainWindow):
     
     def exportAllImages(self):
         settings = QSettings()
-        directory = settings.value("Config/SaveAllDirectory").toString()
+        directory = settings.value(MainWindow.__PREF_SAVE_ALL__).toString()
         directory = QFileDialog.getExistingDirectory(self, "Select a directory to export to", directory)
         if directory is None or not os.path.exists(directory):
             return
 
         self.analyzer.exportAllImages(directory, self._getSelectedResultNames())
-        settings.setValue("Config/SaveAllDirectory", QVariant(directory))
+        settings.setValue(MainWindow.__PREF_SAVEL_ALL__, QVariant(directory))
         self.statusBar().showMessage("Images saved!", 5000)
     
     def computeMetricsAsync(self):
@@ -338,7 +344,7 @@ class MainWindow(QMainWindow):
             self.functionWidget.setCurrentRow(selectedRow if selectedRow >= 0 and selectedRow < self.functionWidget.count() else 0)
         self.statusBar().showMessage("Updated!", 5000)
 
-    def loadInitialData(self):
+    def _loadInitialData(self):
         self.updateUI()
         self.statusBar().showMessage("Ready!", 5000)
             
@@ -354,7 +360,7 @@ def main():
     app.setOrganizationName("Centro de Investigacion y de Estudios Avanzados del Instituto Politecnico Nacional (CINVESTAV-IPN)")
     app.setOrganizationDomain("cs.cinvestav.mx")
     app.setApplicationName("MOOI: Multi-Objective Optimization Interface")
-    app.setWindowIcon(QIcon(os.path.dirname(__file__) + "/icon.png"))
+    app.setWindowIcon(QIcon(MainWindow.__RESOURCES_DIR__ + "images/icon.png"))
     form = MainWindow()
     form.show()
     app.exec_()

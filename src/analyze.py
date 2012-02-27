@@ -18,7 +18,7 @@ analyzer = Analyzer()
 analyzer.setResultDirectories(args.results)
 pareto = args.pareto
 if pareto is None:
-    pareto = os.path.dirname(__file__) + "/resources/" + Analyzer.__PARETO__
+    pareto = os.path.dirname(__file__) + "/../resources/" + Analyzer.__PARETO__
 analyzer.setPareto(pareto)
 functions = []
 for functionName in analyzer.getFunctionNames():

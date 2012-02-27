@@ -5,70 +5,53 @@ Created on Feb 20, 2012
 '''
 from Metrics import Metrics
 import numpy
+import types
 
 class MetricsCalc():
         
     COVERAGE = object()
     ADDITIVE_EPSILON = object()
     MULTIPLICATIVE_EPSILON = object()
-    __MIN__ = 1
-    __MAX__ = -1
+    __MIN__ = 1 # Metric to minimize
+    __MAX__ = -1 # Metric to maximize
+    __CONV__ = 1 # Convergence metric
+    __DIST__ = 2 # Distribution metric
     __EPS__ = 1e-6
 
     def __init__(self):
-        self.n = 0
-        
-    def getLatex(self, fromRow=0, toRow=-1, fromColumn=0, toColumn=-1):
-        if toRow == -1:
-            toRow = len(self.labels)
-        else:
-            toRow += 1
-        if toColumn == -1:
-            toColumn = self.n
-        else:
-            toColumn += 1
-        
-        nColumns = toColumn - fromColumn
-        latex = ["\\begin{center}"]
-        latex.append("    \\begin{table}")
-        latex.append("        \\tiny")
-        latex.append("        \\begin{tabularx}{\\textwidth}{| X || %s |}" % (" | ".join(["X"] * nColumns)))
-        latex.append("            \\hline")
-        latex.append("            Metric / Algorithm & " + " & ".join(self.solutionNames[fromColumn:toColumn]) + " \\\\")
-        for row in xrange(fromRow, toRow):
-            if row == fromRow or row == len(self.labels):
-                latex.append("            \\hline \\hline")
-            else:
-                latex.append("            \\hline")
-                
-            latexRow = [self.labels[row]]
-            for col in xrange(fromColumn, toColumn):
-                latexRow.append(self.metricValues[row][col].replace("<b>", "\\textbf{").replace("</b>", "}"))
-            latex.append("            " + " & ".join(latexRow) + " \\\\")
-        
-        latex.append("            \\hline")
-        latex.append("        \\end{tabularx}")
-        latex.append("    \\end{table}")
-        latex.append("\\end{center}")
-        return "\n".join(latex)
+        self.nSolutions = None
         
     def computeMetrics(self, optimalPareto, solutions):
         self.solutionNames = [solution[0] for solution in solutions]
         solutionData = [solution[1] for solution in solutions]
         self.dim = len(solutionData[0][0][0])
-        self.n = len(self.solutionNames)
+        self.nSolutions = len(self.solutionNames)
         
         unaryMetrics = ['Error ratio', 'Generational distance', 'Spacing', "Hypervolume"]
-        unaryMetricType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MAX__]
+        unaryMetricOptType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MAX__]
+        unaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__DIST__, [MetricsCalc.__CONV__, MetricsCalc.__DIST__]]
+        self.nUnaryMetrics = len(unaryMetrics)
         binaryMetrics = ['Coverage', 'Additive epsilon', 'Multiplicative epsilon']
-        binaryMetricType = [MetricsCalc.__MAX__, MetricsCalc.__MIN__, MetricsCalc.__MIN__]
-        binaryMetricDesc = []
+        binaryMetricOptType = [MetricsCalc.__MAX__, MetricsCalc.__MIN__, MetricsCalc.__MIN__]
+        binaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__CONV__]
+        self.nBinaryMetrics = len(binaryMetrics)
+        self.labels = []
+        self.sublabels = []
+        self.labels += unaryMetrics
+        self.sublabels += [None] * len(self.labels)
         for binaryMetric in binaryMetrics:
-            binaryMetricDesc += ["%s (%s)" % (binaryMetric, name) for name in self.solutionNames]
-        self.labels = unaryMetrics + binaryMetricDesc
+            self.labels += [binaryMetric] * self.nSolutions
+            self.sublabels += self.solutionNames
+            
         self.labels.append("Points")
+        self.sublabels.append("Convergence")
+        self.labels.append("Points")
+        self.sublabels.append("Distribution")
+        
         nLabels = len(self.labels)
-        self.metricValues = [[""] * (self.n + 1) for _ in xrange(nLabels + 1)]
+        self.metricMean = [[None] * (self.nSolutions) for _ in xrange(nLabels)]
+        self.metricStd = [[None] * (self.nSolutions) for _ in xrange(nLabels)]
+        self.metricIsBest = [[False] * (self.nSolutions) for _ in xrange(nLabels)]
         
         nadirPoint = [-(1<<30)] * self.dim
         for solution in solutionData:
@@ -82,7 +65,7 @@ class MetricsCalc():
         metrics.setHypervolumeReference(nadirPoint)
         mean = [[], [], [], []]
         std = [[], [], [], []]
-        for solutionA in xrange(self.n):
+        for solutionA in xrange(self.nSolutions):
             values = [[], [], [], []]
             for runA in xrange(len(solutionData[solutionA])):
                 metrics.setSolutionsToCompare(solutionA, runA, None, None)
@@ -100,7 +83,8 @@ class MetricsCalc():
             mean += meanMetric
             std += stdMetric
         
-        wins = [0] * self.n
+        self.convPoints = [0] * self.nSolutions
+        self.distPoints = [0] * self.nSolutions
         for row in xrange(len(mean)):
             for column in xrange(len(mean[row])):
                 m = mean[row][column]
@@ -108,25 +92,34 @@ class MetricsCalc():
                 if m is None or s is None:
                     continue
                 
-                value = "%.6f / %.6f" % (m, s)
-                if row < len(unaryMetrics) and abs(m*unaryMetricType[row] - min(x*unaryMetricType[row] for x in mean[row] if x is not None)) < MetricsCalc.__EPS__:
-                    value = "<b>%s</b>" % value
-                    wins[column] += 1
+                if row < len(unaryMetrics) and abs(m*unaryMetricOptType[row] - min(x*unaryMetricOptType[row] for x in mean[row] if x is not None)) < MetricsCalc.__EPS__:
+                    self.metricIsBest[row][column] = True
+                    self._addMetricPoints(1, column, unaryMetricType[row])
                 elif row >= len(unaryMetrics):
-                    offset = row - (row - len(unaryMetrics)) % self.n
-                    metricIdx = int((row - len(unaryMetrics)) / self.n)
-                    if m*binaryMetricType[metricIdx] > mean[offset + column][row - offset]*binaryMetricType[metricIdx]:
-                        value = "<b>%s</b>" % value
-                        wins[column] += 1.0 / (self.n - 1)
+                    offset = row - (row - len(unaryMetrics)) % self.nSolutions
+                    metricIdx = int((row - len(unaryMetrics)) / self.nSolutions)
+                    if m*binaryMetricOptType[metricIdx] > mean[offset + column][row - offset]*binaryMetricOptType[metricIdx]:
+                        self.metricIsBest[row][column] = True
+                        self._addMetricPoints(1.0 / (self.nSolutions - 1), column, binaryMetricType[metricIdx])
                 
-                self.metricValues[row][column] = value
+                self.metricMean[row][column] = m
+                self.metricStd[row][column] = s
         
-        maxValue = max(wins)
-        for solutionIdx in xrange(self.n):
-            value = "%.2f" % (wins[solutionIdx])
-            if abs(wins[solutionIdx] - maxValue) < MetricsCalc.__EPS__:
-                value = "<b>%s</b>" % value
-            self.metricValues[nLabels-1][solutionIdx] = value
+        row = nLabels - 2
+        for points in [self.convPoints, self.distPoints]:
+            maxValue = max(points)
+            for solutionIdx in xrange(self.nSolutions):
+                value = points[solutionIdx]
+                if abs(value - maxValue) < MetricsCalc.__EPS__:
+                    self.metricIsBest[row][solutionIdx] = True
+                self.metricMean[row][solutionIdx] = value
+            row += 1
+            
+    def _addMetricPoints(self, points, resultId, metricType):
+        if metricType == MetricsCalc.__CONV__ or ((isinstance(metricType, types.ListType) and MetricsCalc.__CONV__ in metricType)):
+            self.convPoints[resultId] += points
+        if metricType == MetricsCalc.__DIST__ or ((isinstance(metricType, types.ListType) and MetricsCalc.__DIST__ in metricType)):
+            self.distPoints[resultId] += points
         
     def _getMetric(self, solutionData, metric, metrics, solutionNames):
         n = len(solutionData)
@@ -159,14 +152,11 @@ class MetricsCalc():
         return self.dim
     
     def getNSolutions(self):
-        return self.n
+        return self.nSolutions
     
     def getSolutionNames(self):
         return self.solutionNames
     
     def getMetricLabels(self):
         return self.labels
-    
-    def getMetricValues(self):
-        return self.metricValues
     

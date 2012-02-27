@@ -169,16 +169,112 @@ class Analyzer:
             return None
         return pareto.getSolutionPoints(0)
     
-    def _getLatexFunction(self, functionName):
+    def getFormattedValue(self, data1, data2, best, decimalFormat="%.6f", bestFormat="\\textbf{%s}"):
+        if data1 is None:
+            return ""
+        
+        value = decimalFormat % data1
+        if data2 is not None:
+            value += " / " + (decimalFormat % data2)
+        if best:
+            value = bestFormat % value
+        return value
+    
+    def _getBlockLatex(self, name, description, data1, data2, best):
+        n = len(data1)
+        if len(description) == 1 and description[0] is None:
+            latex = ["\\multicolumn{2}{|X|}{%s}" % name]
+        else:
+            latex = ["            \\multirow{%d}{*}{%s} \\\\" % (n, name)]
+        for block in xrange(n):
+            latexRow = []
+            if description[block] is not None:
+                latexRow.append(description[block])
+            for i in xrange(len(data1[block])):
+                latexRow.append(self.getFormattedValue(data1[block][i], None if data2 is None \
+                                                       else data2[block][i], best[block][i]))
+            latex.append("                & " + " & ".join(latexRow) + " \\\\")
+        latex.append("                \\hline")
+        return "\n".join(latex)
+    
+    def getCurrentLatex(self):
+        nRows = len(self.metrics.labels)
+        nColumns = self.nResults - 1
+        
+        latex = ["\\begin{center}"]
+        latex.append("    \\begin{table}")
+        latex.append("        \\tiny")
+        latex.append("        \\begin{tabularx}{\\textwidth}{| X | X || %s |}" % (" | ".join(["X"] * nColumns)))
+        latex.append("            \\hline")
+        latex.append("            \\multicolumn{2}{|c|}{Metric / Algorithm} & " + " & ".join(self.metrics.solutionNames) + " \\\\")
+        latex.append("            \\hline \\hline")
+        row = 0
+        while row < nRows:
+            if row == nRows - 2:
+                latex.append("            \\hline")
+            if row < self.metrics.nUnaryMetrics:
+                toRow = row + 1
+            elif row < nRows-2:
+                toRow = row + nColumns
+            else:
+                toRow = nRows
+            latex.append(self._getBlockLatex(self.metrics.labels[row], self.metrics.sublabels[row:toRow], self.metrics.metricMean[row:toRow], \
+                                             self.metrics.metricStd[row:toRow], self.metrics.metricIsBest[row:toRow]))
+            row = toRow
+        
+        latex.append("        \\end{tabularx}")
+        latex.append("    \\end{table}")
+        latex.append("\\end{center}")
+        return "\n".join(latex)
+    
+    def _getFunctionLatex(self, functionName):
         pareto = self.getFunctionPareto(functionName)
         results = self.getFunctionResults(functionName, self.resultNames)
         self.metrics.computeMetrics(pareto, results)
-        return self.metrics.getLatex()
+        return self.getCurrentLatex()
+    
+    def _getBest(self, data):
+        n = len(data)
+        best = [False] * n
+        maxValue = max(data)
+        for i in xrange(n):
+            if abs(maxValue - data[i]) < MetricsCalc.__EPS__:
+                best[i] = True
+                
+        return best
+    
+    def _getAllSummaryLatex(self, functionNames, convPoints, distPoints, innerLatex):
+        best = [self._getBest(convPoints), self._getBest(distPoints)]
+        
+        latex = ["\\begin{center}"]
+        latex.append("    \\begin{table}")
+        latex.append("        \\tiny")
+        latex.append("        \\begin{tabularx}{\\textwidth}{| X | X || %s |}" % (" | ".join(["X"] * len(self.metrics.solutionNames))))
+        latex.append("            \\hline")
+        latex.append("            \\multicolumn{2}{|c|}{Function / Algorithm} & " + " & ".join(self.metrics.solutionNames) + " \\\\")
+        latex.append("            \\hline \\hline")
+        latex += innerLatex
+        latex.append(self._getBlockLatex("\\textbf{Total}", ["Convergence", "Distribution"], [convPoints, distPoints], None, best))
+        latex.append("        \\end{tabularx}")
+        latex.append("    \\end{table}")
+        latex.append("\\end{center}")
+        return "\n".join(latex)
     
     def getLatex(self, functionNames):
         latex = []
+        innerSummaryLatex = []
+        convPoints = [0] * (self.nResults - 1)
+        distPoints = [0] * (self.nResults - 1)
         for functionName in functionNames:
-            latex.append(self._getLatexFunction(functionName))
+            latex.append(self._getFunctionLatex(functionName))
+            innerSummaryLatex.append(self._getBlockLatex(functionName, ["Convergence", "Distribution"], \
+                                                         [self.metrics.convPoints, self.metrics.distPoints], None, \
+                                                         self.metrics.metricIsBest[-2:]))
+            innerSummaryLatex.append("            \\hline")
+            for i in xrange(self.nResults - 1):
+                convPoints[i] += self.metrics.convPoints[i]
+                distPoints[i] += self.metrics.distPoints[i]
         
+        latex.append(self._getAllSummaryLatex(functionNames, convPoints, distPoints, innerSummaryLatex))
         return "\n".join(latex)
     
