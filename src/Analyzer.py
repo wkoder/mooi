@@ -249,7 +249,7 @@ class Analyzer:
                                              self.metrics.metricStd[row:toRow], self.metrics.metricIsBest[row:toRow]))
             row = toRow
         
-        latex.append(self._getTableEndLatex("Results for function %s." % functionName, "%s-results-table" % functionName))
+        latex.append(self._getTableEndLatex("Results for function %s." % functionName, "%s-results-table" % functionName.lower()))
         return "\n".join(latex)
     
     def _getFunctionLatex(self, functionName):
@@ -276,7 +276,7 @@ class Analyzer:
         latex.append("            \\hline")
         latex += innerLatex
         latex.append(self._getBlockLatex("\\textbf{Total}", ["Convergence", "Distribution"], [convPoints, distPoints], None, best))
-        latex.append(self._getTableEndLatex("Result summary.", "results-summary-table", False))
+        latex.append(self._getTableEndLatex("Result summary.", "tab:results-summary", False))
         
         return "\n".join(latex)
     
@@ -292,7 +292,7 @@ class Analyzer:
         template = open(Analyzer.__TEMPLATE_DIR__ + Analyzer.__TEMPLATE_FILE__, "r")
         report = open(reportDir + Analyzer.__TEMPLATE_FILE__, "w")
         for line in template:
-            if line == Analyzer.__TEMPLATE_VAR__:
+            if line.strip() == Analyzer.__TEMPLATE_VAR__:
                 report.write(resultsLatex)
             else:
                 report.write(line)
