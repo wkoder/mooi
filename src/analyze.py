@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser(description="Analyze Multi-Objective Optimizati
 parser.add_argument("--results", "-r", metavar="RESULT", nargs="+", help="results directory of an algorithm")
 parser.add_argument("--functions", "-f", metavar="FUNCTION", nargs="*", help="function to test")
 parser.add_argument("--pareto", "-p", help="true Pareto front directory")
+parser.add_argument("--report", "-R", default="report", help="target report directory")
 args = parser.parse_args()
 
 analyzer = Analyzer()
@@ -25,4 +26,4 @@ for functionName in analyzer.getFunctionNames():
     if len(args.functions) == 0 or True in [analyzer.functionMatches(fn, functionName) for fn in args.functions]:
         functions.append(functionName)
         
-print analyzer.getLatex(functions)
+print analyzer.generateReport(args.report, functions)

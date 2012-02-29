@@ -94,7 +94,7 @@ class MetricsCalc():
                 
                 if row < len(unaryMetrics) and abs(m*unaryMetricOptType[row] - min(x*unaryMetricOptType[row] for x in mean[row] if x is not None)) < MetricsCalc.__EPS__:
                     self.metricIsBest[row][column] = True
-                    self._addMetricPoints(1, column, unaryMetricType[row])
+                    self._addMetricPoints(1.0, column, unaryMetricType[row])
                 elif row >= len(unaryMetrics):
                     offset = row - (row - len(unaryMetrics)) % self.nSolutions
                     metricIdx = int((row - len(unaryMetrics)) / self.nSolutions)
@@ -116,9 +116,12 @@ class MetricsCalc():
             row += 1
             
     def _addMetricPoints(self, points, resultId, metricType):
-        if metricType == MetricsCalc.__CONV__ or ((isinstance(metricType, types.ListType) and MetricsCalc.__CONV__ in metricType)):
+        isList = isinstance(metricType, types.ListType)
+#        if isList:
+#            points /= len(metricType)
+        if metricType == MetricsCalc.__CONV__ or (isList and MetricsCalc.__CONV__ in metricType):
             self.convPoints[resultId] += points
-        if metricType == MetricsCalc.__DIST__ or ((isinstance(metricType, types.ListType) and MetricsCalc.__DIST__ in metricType)):
+        if metricType == MetricsCalc.__DIST__ or (isList and MetricsCalc.__DIST__ in metricType):
             self.distPoints[resultId] += points
         
     def _getMetric(self, solutionData, metric, metrics, solutionNames):

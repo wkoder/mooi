@@ -6,6 +6,7 @@ Created on Oct 3, 2011
 from Analyzer import Analyzer
 from MetricsPanel import MetricsPanel
 from PlotWidget import PlotWidget
+from Utils import __RESOURCES_DIR__
 from PyQt4.QtCore import * #@UnusedWildImport
 from PyQt4.QtGui import * #@UnusedWildImport
 import os
@@ -24,7 +25,6 @@ class MainWindow(QMainWindow):
     __PREF_DIR__ = "Config/Directories"
     __PREF_SAVE__ = "Config/SaveDirectory"
     __PREF_SAVE_ALL__ = "Config/SaveAllDirectory"
-    __RESOURCES_DIR__ = os.path.dirname(__file__) + "/../resources/"
     
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -160,7 +160,7 @@ class MainWindow(QMainWindow):
         self.restoreState(settings.value(MainWindow.__PREF_STATE__).toByteArray())
         self.restoreGeometry(settings.value(MainWindow.__PREF_GEOM__).toByteArray())
 
-        paretoDirectory = MainWindow.__RESOURCES_DIR__ + Analyzer.__PARETO__
+        paretoDirectory = __RESOURCES_DIR__ + Analyzer.__PARETO__
         self.analyzer.setPareto(paretoDirectory)
         currentDirs = settings.value(MainWindow.__PREF_DIR__)
         if currentDirs is not None:
@@ -360,7 +360,7 @@ def main():
     app.setOrganizationName("Centro de Investigacion y de Estudios Avanzados del Instituto Politecnico Nacional (CINVESTAV-IPN)")
     app.setOrganizationDomain("cs.cinvestav.mx")
     app.setApplicationName("MOOI: Multi-Objective Optimization Interface")
-    app.setWindowIcon(QIcon(MainWindow.__RESOURCES_DIR__ + "images/icon.png"))
+    app.setWindowIcon(QIcon(__RESOURCES_DIR__ + "images/icon.png"))
     form = MainWindow()
     form.show()
     app.exec_()

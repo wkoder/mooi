@@ -8,6 +8,7 @@ import math
 import numpy
 import os
 
+__RESOURCES_DIR__ = os.path.dirname(__file__) + "/../resources/"
 
 def dominates(x, y):
     """

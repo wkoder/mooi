@@ -1,0 +1,75 @@
+\documentclass[english]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{etex}
+\reserveinserts{100}
+\usepackage{morefloats}
+\usepackage{dcolumn}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{chngpage}
+\usepackage{booktabs}
+\usepackage[spanish]{babel}
+
+\begin{document}
+
+\makeatletter
+\title{Multi-Objective Compact Differential Evolution}
+\author{Moisés Osorio}
+\date{\today}
+\makeatother
+\maketitle
+
+\section*{Resultados}
+
+Varias funciones de prueba se han utilizado para comparar los resultados obtenidos por la implementación actual de mocDE.
+\begin{itemize}
+\item Deb 2 y 3 (figuras \ref{deb2} y \ref{deb3}; tablas \ref{deb2-results-table} y \ref{deb3-results-table})
+\item Fonseca 2 (figura \ref{fonseca2}; tabla \ref{fonseca2-results-table})
+\item Kursawe (figura \ref{kursawe}; tabla \ref{kursawe-results-table})
+\item DTLZ 1, 2, 3 y 7 (figuras \ref{dtlz1}, \ref{dtlz2}, \ref{dtlz3} y \ref{dtlz7}; tablas \ref{dtlz1-results-table}, \ref{dtlz2-results-table}, \ref{dtlz3-results-table} y \ref{dtlz7-results-table})
+\item ZDT 1, 2 y 3 (figuras \ref{zdt1}, \ref{zdt2} y \ref{zdt3}; tablas \ref{zdt1-results-table}, \ref{zdt2-results-table} y \ref{zdt3-results-table})
+\item UF1 - UF10 del CEC'09 (figuras \ref{uf1}, \ref{uf2}, \ref{uf3}, \ref{uf4}, \ref{uf5}, \ref{uf6}, \ref{uf7}, \ref{uf8}, \ref{uf9} y \ref{uf10}; tablas \ref{uf1-results-table}, \ref{uf2-results-table}, \ref{uf3-results-table}, \ref{uf4-results-table}, \ref{uf5-results-table}, \ref{uf6-results-table}, \ref{uf7-results-table}, \ref{uf8-results-table}, \ref{uf9-results-table} y \ref{uf10-results-table})
+\end{itemize}
+
+Las figuras muestran el desempeño alcanzado por MOCDE, MOEA/D, PAES y NSGA-II en comparación con el frente de Pareto real. Así mismo, las tablas muestran la media y la desviación estándar de los resultados de algunas métricas calculadas sobre 20 ejecuciones de dichos algoritmos (las gráficas muestran la comparación de una ejecución al azar).
+
+%RESULTS%
+
+\section*{Trabajo actual}
+
+Actualmente se tienen los siguientes objetivos:
+\begin{itemize}
+\item Investigar funciones de densidad para saber cuándo reemplazar una solución por otra.
+\item Revisitar la escalarización de Chebyshev ya que se encontró un error de implementación en ella.
+\item Investigar operadores y técnicas utilizadas en micro algoritmos genéticos.
+\end{itemize}
+
+\section*{Cronograma de Actividades}
+
+Las actividades a realizar durante el trabajo de tesis son:
+\begin{enumerate}
+\item Revisión del estado del arte y literatura relacionada. Obtener un panorama amplio del trabajo pasado y actual sobre la optimización multiobjetivo, a fin de compararse y mejorar, de algún modo, dichos trabajos.
+\item Diseño general del algoritmo principal. Definir de manera general, el enfoque de solución a utilizar.
+\item Implementación básica capaz de resolver problemas sencillos. Implementar una versión del algoritmo que sea competitiva en problemas generalmente reconocidos como fáciles.
+\item Redacción del protocolo de tesis. Definir el problema, el alcance del trabajo de investigación y el plan general de trabajo.
+\item Implementación de scripts de pruebas y estadísticos. Implementar scripts que permitan obtener valores estadísticos sobre el desempeño del algoritmo, a fin de ser comparado con el estado del arte.
+\item Mejora de la convergencia de la implementación básica. Mejorar la convergencia de los resultados obtenidos por el algoritmo, a fin de que sea competitivo en problemas más difíciles que aquéllos resueltos por la versión básica.
+\item Mejora de la distribución de la implementación mejorada. Aumentar la distribución de los resultados obtenidos por el algoritmo ya que, como la convergencia, éste es otro indicador de la calidad de los mismos.
+\item Escritura de tesis. Redactar aquellos capítulos que no necesiten de los resultados finales del algoritmo.
+\item Refinamiento general de la implementación del algoritmo. Refinar los últimos detalles del algoritmo para alcanzar su máxima eficacia y eficiencia.
+\item Finalización de escritura de tesis. Redactar aquellos capítulos finales dependientes de los resultados del algoritmo.
+\item Publicación de resultados. Escribir un artículo en un congreso internacional para dar a conocer los resultados de esta investigación.
+\end{enumerate}
+
+La figura \ref{fig:Cronograma-de-actividades} muestra el cronograma de las actividades anteriormente detalladas. La región verde es aquella que ha sido completada, la roja es la que se está trabajando actualmente y la gris aquella por realizar.
+
+\begin{figure}
+\includegraphics[scale=0.5]{images/cronograma}
+\caption{\label{fig:Cronograma-de-actividades}Cronograma de actividades.}
+\end{figure}
+
+\end{document}
