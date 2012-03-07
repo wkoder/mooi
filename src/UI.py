@@ -196,8 +196,9 @@ class MainWindow(QMainWindow):
         if tmp:
             prefix = "mooi_%s_" % self.currentSolution.functionName
             filename = tempfile.mkstemp(prefix=prefix, suffix=".png", text=False)[1]
-        self.analyzer.exportToImage(self.currentSolution, generation, self.isFunctionSpaceSelected(), \
-                                    self._getSelectedResultNames(), filename)
+        resultNames = self._getSelectedResultNames()
+        self.analyzer.exportToImage(self.currentSolution, [generation]*len(resultNames), self.isFunctionSpaceSelected(), \
+                                    resultNames, filename)
         if tmp:
             self.plot.setPlotPixmap(filename)
             try:

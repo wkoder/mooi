@@ -4,6 +4,7 @@ Created on Feb 21, 2012
 @author: Moises Osorio [WCoder]
 '''
 from MOSolution import MOSolution
+from Metrics import Metrics
 from MetricsCalc import MetricsCalc
 from ResultPlotter import ResultPlotter
 import Utils
@@ -19,6 +20,7 @@ class Analyzer:
     __TEMPLATE_FILE__ = "report.tex"
     __TEMPLATE_DIR__ = Utils.__RESOURCES_DIR__ + "report/"
     __TEMPLATE_VAR__ = "%RESULTS%"
+    __IMAGES_DIR__ = "images/"
 
     def __init__(self):
         self.plotter = ResultPlotter()
@@ -56,6 +58,8 @@ class Analyzer:
         
     def getResultName(self, directory):
         directory = str(directory)
+        if directory[-1] == "/":
+            directory = directory[:-1]
         slash = max(directory.rfind("/"), directory.rfind("\\"))
         return directory[slash+1:]
     
@@ -73,8 +77,9 @@ class Analyzer:
         for functionName in self.getFunctionNames():
             function = self.functions[functionName.lower()]
             filename = directory + "/" + function.functionName
-            self.exportToImage(function, 0, True, resultNames, filename + "_fun.png")
-            self.exportToImage(function, 0, False, resultNames, filename + "_var.png")
+            generation = [0] * len(resultNames)
+            self.exportToImage(function, generation, True, resultNames, filename + "_fun.png")
+            self.exportToImage(function, generation, False, resultNames, filename + "_var.png")
     
     def exportToImage(self, function, generation, functionSpace, resultNames, filename):
         toPlot = self._getSolutionsToPlot(function, generation, functionSpace, resultNames)
@@ -86,6 +91,10 @@ class Analyzer:
     def _getSolutionsToPlot(self, problem, generation, functionSpace, resultNames):
         solutions = []
         k = 0
+        if Analyzer.__PARETO__ in resultNames:
+            resultNames.remove(Analyzer.__PARETO__)
+            resultNames.insert(0, Analyzer.__PARETO__)
+            
         for name in resultNames:
             k += 1
             if functionSpace:
@@ -97,7 +106,7 @@ class Analyzer:
                 for p in xrange(3):
                     if k & (1 << p) > 0:
                         rgb[p] = 255
-                points = solution.getSolutionPoints(generation-1)
+                points = solution.getSolutionPoints(generation[k-1] - 1)
                 solutions.append([name, points, rgb])
             
         return solutions
@@ -252,11 +261,65 @@ class Analyzer:
         latex.append(self._getTableEndLatex("Results for function %s." % functionName, "%s-results-table" % functionName.lower()))
         return "\n".join(latex)
     
-    def _getFunctionLatex(self, functionName):
+    def _getFigureLatex(self, functionName, highlight, filename, caption):
+        latex = ["\\begin{figure}[h!]"]
+        latex.append("\\centering")
+        latex.append("\\includegraphics[width=\\textwidth]{%s}" % filename)
+        latex.append("\\caption{%s}" % caption)
+        latex.append("\\end{figure}")
+        return "\n".join(latex)
+    
+    def generateBestImage(self, functionName, highlight, filename, worst=False):
+        print "    Generating %s figure for %s" % ("worst" if worst else "best", functionName)
+        function = self.functions[functionName.lower()]
+        resultNames = [Analyzer.__PARETO__, highlight]
+        if highlight is None:
+            resultNames = self.resultNames
+        generation = [0] * len(resultNames)
+        
+        pareto = self.getFunctionPareto(functionName)
+        factor = -1 if worst else 1
+        for i in xrange(len(resultNames)):
+            if resultNames[i] == Analyzer.__PARETO__:
+                continue
+            
+            results = self.getFunctionResults(functionName, [resultNames[i]])
+            bestValue = factor * (1 << 30)
+            metrics = Metrics(pareto, [results[0][1]])
+            for run in xrange(len(results[0][1])):
+                metrics.setSolutionsToCompare(0, run, None, None)
+                value = metrics.errorRatio()
+                if value*factor < bestValue*factor:
+                    bestValue = value
+                    generation[i] = run
+        
+        self.exportToImage(function, generation, True, resultNames, filename)
+        
+    def _getFunctionLatex(self, functionName, reportDir, highlight):
+        print "Generating results for function %s" % functionName
         pareto = self.getFunctionPareto(functionName)
         results = self.getFunctionResults(functionName, self.resultNames)
         self.metrics.computeMetrics(pareto, results)
-        return self.getCurrentLatex(functionName)
+        
+        imageDir = reportDir + Analyzer.__IMAGES_DIR__
+        if not os.path.exists(imageDir):
+            os.makedirs(imageDir)
+        
+        desc = highlight
+        if desc is None:
+            desc = "all results"
+        caption = " run of %s for %s (according to error ratio)." % (desc, functionName)
+        
+        bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_best_fun.png"
+        self.generateBestImage(functionName, highlight, reportDir + bestImage)
+        latex = [self._getFigureLatex(functionName, highlight, bestImage, "Best %s" % caption)]
+        
+        worstImage = Analyzer.__IMAGES_DIR__ + functionName + "_worst_fun.png"
+        self.generateBestImage(functionName, highlight, reportDir + worstImage, True)
+        latex.append(self._getFigureLatex(functionName, highlight, worstImage, "Worst %s" % caption))
+        
+        latex.append(self.getCurrentLatex(functionName))
+        return "\n".join(latex)
     
     def _getBest(self, data):
         n = len(data)
@@ -280,15 +343,19 @@ class Analyzer:
         
         return "\n".join(latex)
     
-    def generateReport(self, reportDir, functionNames):
+    def generateReport(self, reportDir, functionNames, highlight):
         if reportDir[-1] != "/":
             reportDir += "/"
         if os.path.exists(reportDir):
+            print "Backing up previous report at '%s'" % reportDir
             shutil.move(reportDir, "%s-%s" % (reportDir[:-1], time.strftime("%Y%m%d-%H%M%S")))
             
+        print "Copying template files"
         shutil.copytree(Analyzer.__TEMPLATE_DIR__, reportDir)
-        resultsLatex = self._getLatex(functionNames)
+        print "Generating results latex"
+        resultsLatex = self._getLatex(functionNames, reportDir, highlight)
         
+        print "Adding results latex into report template"
         template = open(Analyzer.__TEMPLATE_DIR__ + Analyzer.__TEMPLATE_FILE__, "r")
         report = open(reportDir + Analyzer.__TEMPLATE_FILE__, "w")
         for line in template:
@@ -299,15 +366,16 @@ class Analyzer:
     
         template.close()
         report.close()
+        print "Report successfully generated!"
     
-    def _getLatex(self, functionNames):
+    def _getLatex(self, functionNames, reportDir, highlight):
         latex = ["\\newcolumntype{K}{>{\\centering\\arraybackslash$}X<{$}}"]
         innerSummaryLatex = []
         convPoints = [0] * (self.nResults - 1)
         distPoints = [0] * (self.nResults - 1)
         idx = 0
         for functionName in functionNames:
-            latex.append(self._getFunctionLatex(functionName))
+            latex.append(self._getFunctionLatex(functionName, reportDir, highlight))
             idx += 1
             if idx % 7 == 0:
                 latex.append("\\clearpage")
@@ -320,6 +388,7 @@ class Analyzer:
                 convPoints[i] += self.metrics.convPoints[i]
                 distPoints[i] += self.metrics.distPoints[i]
         
+        print "Generating all summary results"
         latex.append(self._getAllSummaryLatex(functionNames, convPoints, distPoints, innerSummaryLatex))
         return "\n".join(latex)
     
