@@ -106,7 +106,7 @@ class Analyzer:
                 for p in xrange(3):
                     if k & (1 << p) > 0:
                         rgb[p] = 255
-                points = solution.getSolutionPoints(generation[k-1] - 1)
+                points = solution.getSolutionPoints(generation[k-1])
                 solutions.append([name, points, rgb])
             
         return solutions
@@ -288,7 +288,7 @@ class Analyzer:
             metrics = Metrics(pareto, [results[0][1]])
             for run in xrange(len(results[0][1])):
                 metrics.setSolutionsToCompare(0, run, None, None)
-                value = metrics.errorRatio()
+                value = metrics.generationalDistance()
                 if value*factor < bestValue*factor:
                     bestValue = value
                     generation[i] = run
@@ -308,7 +308,7 @@ class Analyzer:
         desc = highlight
         if desc is None:
             desc = "all results"
-        caption = " run of %s for %s (according to error ratio)." % (desc, functionName)
+        caption = " run of %s for %s (according to generational distance)." % (desc, functionName)
         
         bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_best_fun.png"
         self.generateBestImage(functionName, highlight, reportDir + bestImage)
