@@ -6,6 +6,7 @@ Created on Feb 20, 2012
 from Metrics import Metrics
 import numpy
 import types
+from symbol import factor
 
 class MetricsCalc():
         
@@ -92,13 +93,18 @@ class MetricsCalc():
                 if m is None or s is None:
                     continue
                 
-                if row < len(unaryMetrics) and abs(m*unaryMetricOptType[row] - min(x*unaryMetricOptType[row] for x in mean[row] if x is not None)) < MetricsCalc.__EPS__:
-                    self.metricIsBest[row][column] = True
-                    self._addMetricPoints(1.0, column, unaryMetricType[row])
+                if row < len(unaryMetrics):
+                    factor = unaryMetricOptType[row]
+                    if abs(m*factor - min(x*factor for x in mean[row] if x is not None)) < MetricsCalc.__EPS__:
+                        self.metricIsBest[row][column] = True
+                    for i in xrange(len(mean[row])):
+                        if i != column and mean[row][i] is not None and mean[row][column]*factor < mean[row][i]*factor:
+                            self._addMetricPoints(1.0 / (self.nSolutions - 1), column, unaryMetricType[row])
                 elif row >= len(unaryMetrics):
                     offset = row - (row - len(unaryMetrics)) % self.nSolutions
                     metricIdx = int((row - len(unaryMetrics)) / self.nSolutions)
-                    if m*binaryMetricOptType[metricIdx] > mean[offset + column][row - offset]*binaryMetricOptType[metricIdx]:
+                    factor = binaryMetricOptType[metricIdx]
+                    if m*factor > mean[offset + column][row - offset]*factor:
                         self.metricIsBest[row][column] = True
                         self._addMetricPoints(1.0 / (self.nSolutions - 1), column, binaryMetricType[metricIdx])
                 
@@ -116,6 +122,7 @@ class MetricsCalc():
             row += 1
             
     def _addMetricPoints(self, points, resultId, metricType):
+        print resultId, metricType, points
         isList = isinstance(metricType, types.ListType)
 #        if isList:
 #            points /= len(metricType)
