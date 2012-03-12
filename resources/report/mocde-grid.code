@@ -1,0 +1,16 @@
+si el individuo X es dominado por otro individuo en el archivo A
+	regresar no
+fin si
+
+si el individuo X domina a algún individuo en el archivo A
+	eliminar los individuos en el archivo A que son dominados por X
+	regresar si
+fin si
+
+si el archivo no está lleno
+	agregar X al archivo A
+sino y agregar X al archivo A incrementa la diversidad
+	reemplazar con X al individuo en la región más densa del archivo A
+fin si
+
+regresar si X se encuentra en una zona menos densa que su padre E

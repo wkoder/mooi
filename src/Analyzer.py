@@ -230,7 +230,7 @@ class Analyzer:
         latex = ["        \\end{tabularx}"]
         if big:
             latex.append("    \\end{adjustwidth}")
-        latex.append("    \\label{%s} \\caption{%s}" % (label, caption))
+        latex.append("    \\caption{\\label{%s} %s}" % (label, caption))
         latex.append("\\end{table}")
         return "\n".join(latex)
     
@@ -262,7 +262,7 @@ class Analyzer:
         return "\n".join(latex)
     
     def _getFigureLatex(self, functionName, highlight, filename, caption):
-        latex = ["\\begin{figure}[h!]"]
+        latex = ["\\begin{figure}[!ht]"]
         latex.append("\\centering")
         latex.append("\\includegraphics[width=\\textwidth]{%s}" % filename)
         latex.append("\\caption{%s}" % caption)
@@ -308,7 +308,7 @@ class Analyzer:
         desc = highlight
         if desc is None:
             desc = "all results"
-        caption = " run of %s for %s (according to generational distance)." % (desc, functionName)
+        caption = "run of %s for %s (according to generational distance)." % (desc, functionName)
         
         bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_best_fun.png"
         self.generateBestImage(functionName, highlight, reportDir + bestImage)
@@ -369,7 +369,7 @@ class Analyzer:
         print "Report successfully generated!"
     
     def _getLatex(self, functionNames, reportDir, highlight):
-        latex = ["\\newcolumntype{K}{>{\\centering\\arraybackslash$}X<{$}}"]
+        latex = [] #["\\newcolumntype{K}{>{\\centering\\arraybackslash$}X<{$}}"]
         innerSummaryLatex = []
         convPoints = [0] * (self.nResults - 1)
         distPoints = [0] * (self.nResults - 1)

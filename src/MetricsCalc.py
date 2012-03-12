@@ -122,7 +122,6 @@ class MetricsCalc():
             row += 1
             
     def _addMetricPoints(self, points, resultId, metricType):
-        print resultId, metricType, points
         isList = isinstance(metricType, types.ListType)
 #        if isList:
 #            points /= len(metricType)

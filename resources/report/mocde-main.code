@@ -1,0 +1,34 @@
+generar población PV(u, d) con media u = 0.5 y desviación estándar d = 4
+inicializar archivo no dominado A = 0
+generar individuo E a partir de la población inicial PV
+agregar E al archivo A
+mientras el criterio de término no se haya cumplido
+	generar individuo R a partir de la población actual PV(u, d)
+	generar individuo S a partir de la población actual PV(u, d)
+	generar individuo T a partir de la población actual PV(u, d)
+	X = T + F*(R - S) // Mutación con factor F
+	X = crossover(X, E, CR) // Cruza con razón CR
+
+	// Selección
+	W = E // Ganador
+	L = X // Perdedor
+	si X domina a E
+		agregar X al archivo E
+		W = X
+		L = E
+	sino si X y E son no dominados y se puede agregar X al archivo E
+		W = X
+		L = E
+	fin si
+	E = W // El ganador de la selección
+	
+	// Actualizar población PV
+	para i desde 1 hasta n
+		u2[i] = u[i] + (W[i] - L[i]) / np
+		d2[i] = (d[i]^2 + u[i]^2 - u2[i]^2 + 
+				(W[i]^2 - L[i]^2) / np)^0.5
+	fin para
+	PV(u, d) = PV(u2, d2)	
+fin mientras
+
+regresar archivo A
