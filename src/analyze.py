@@ -7,12 +7,13 @@ Created on Feb 22, 2012
 from Analyzer import Analyzer
 import argparse
 import os
+import time
 
 parser = argparse.ArgumentParser(description="Analyze Multi-Objective Optimization algorithm results against true Pareto fronts")
 parser.add_argument("--results", "-r", metavar="RESULT", nargs="+", help="results directory of an algorithm")
 parser.add_argument("--functions", "-f", metavar="FUNCTION", nargs="*", help="function to test")
 parser.add_argument("--pareto", "-p", help="true Pareto front directory")
-parser.add_argument("--report", "-R", default="report", help="target report directory")
+parser.add_argument("--report", "-R", default="report-%s" % time.strftime("%Y%m%d-%H%M%S"), help="target report directory")
 parser.add_argument("--highlight", "-hl", nargs="?", help="result name to highlight")
 args = parser.parse_args()
 

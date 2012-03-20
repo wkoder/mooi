@@ -369,7 +369,7 @@ class Analyzer:
         print "Report successfully generated!"
     
     def _getLatex(self, functionNames, reportDir, highlight):
-        latex = [] #["\\newcolumntype{K}{>{\\centering\\arraybackslash$}X<{$}}"]
+        latex = []
         innerSummaryLatex = []
         convPoints = [0] * (self.nResults - 1)
         distPoints = [0] * (self.nResults - 1)

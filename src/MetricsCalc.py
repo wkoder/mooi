@@ -71,7 +71,7 @@ class MetricsCalc():
             for runA in xrange(len(solutionData[solutionA])):
                 metrics.setSolutionsToCompare(solutionA, runA, None, None)
                 values[0].append(metrics.errorRatio())
-                values[1].append(metrics.generationalDistance())
+                values[1].append(metrics.generationalDistance())#["\\newcolumntype{K}{>{\\centering\\arraybackslash$}X<{$}}"]
                 values[2].append(metrics.spacing())
                 values[3].append(metrics.hypervolume())
                 
