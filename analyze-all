@@ -1,3 +1,3 @@
 # /bin/bash
 
-./src/analyze.py --results ../mocde/results/mocde-$1 ../mocde/results/moead-$1 ../mocde/results/paes-$1 ../mocde/results/nsga2-$1 --functions "*" -hl mocde-$1
+./src/analyze.py -R report-$1 --results ../mocde/results/mocde-$1 ../mocde/results/moead-$1 ../mocde/results/paes-$1 ../mocde/results/nsga2-$1 --functions "*" -hl mocde-$1
