@@ -347,8 +347,9 @@ class Analyzer:
         if reportDir[-1] != "/":
             reportDir += "/"
         if os.path.exists(reportDir):
-            print "Backing up previous report at '%s'" % reportDir
-            shutil.move(reportDir, "%s-%s" % (reportDir[:-1], time.strftime("%Y%m%d-%H%M%S")))
+            newReportDir = "%s-%s" % (reportDir[:-1], time.strftime("%Y%m%d-%H%M%S"))
+            print "Backing up previous report at '%s' in '%s'" % (reportDir, newReportDir)
+            shutil.move(reportDir, newReportDir)
             
         print "Copying template files"
         shutil.copytree(Analyzer.__TEMPLATE_DIR__, reportDir)
