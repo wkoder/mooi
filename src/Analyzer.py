@@ -296,7 +296,6 @@ class Analyzer:
         self.exportToImage(function, generation, True, resultNames, filename)
         
     def _getFunctionLatex(self, functionName, reportDir, highlight):
-        print "Generating results for function %s" % functionName
         pareto = self.getFunctionPareto(functionName)
         results = self.getFunctionResults(functionName, self.resultNames)
         self.metrics.computeMetrics(pareto, results)
@@ -376,8 +375,9 @@ class Analyzer:
         distPoints = [0] * (self.nResults - 1)
         idx = 0
         for functionName in functionNames:
-            latex.append(self._getFunctionLatex(functionName, reportDir, highlight))
             idx += 1
+            print "Generating results for function %s (%d/%d)" % (functionName, idx, len(functionNames))
+            latex.append(self._getFunctionLatex(functionName, reportDir, highlight))
             if idx % 7 == 0:
                 latex.append("\\clearpage")
             latex.append("")
