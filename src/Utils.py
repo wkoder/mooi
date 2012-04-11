@@ -9,6 +9,7 @@ import numpy
 import os
 
 __RESOURCES_DIR__ = os.path.dirname(__file__) + "/../resources/"
+__EPS__ = 1e-6
 
 def dominates(x, y):
     """
@@ -63,7 +64,7 @@ def getFunctionName(filename):
         filename = filename[:filename.rfind(".")]
     return filename.lower().replace("_fun", "").replace("_var", "").replace("fun", "").replace("var", "")\
         .replace("front_", "").replace("pareto_", "").replace("pf_", "").replace("_pf", "").replace("_front", "")\
-        .replace("_pareto", "").replace("front", "").replace("pareto", "").title()
+        .replace("_pareto", "").replace("front", "").replace("pareto", "").upper()
 
 def isSolutionFile(filename):
     if not os.path.exists(filename) or os.path.isdir(filename):
@@ -91,3 +92,9 @@ def isSolutionFile(filename):
         
 def isFunctionFile(filename):
     return "var" not in filename.lower()
+
+def createListList(n):
+    x = []
+    for _ in xrange(n):
+        x.append([])
+    return x

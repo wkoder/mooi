@@ -234,6 +234,20 @@ class Analyzer:
         latex.append("\\end{table}")
         return "\n".join(latex)
     
+    def getCurrentBestResult(self):
+        convIdx = len(self.metrics.labels) - 2
+        distIdx = convIdx + 1
+        convergence = self.metrics.metricMean[convIdx]
+        distribution = self.metrics.metricMean[distIdx]
+        best = 0
+        for i in xrange(1, self.nResults - 1):
+            if convergence[i] > convergence[best] + Utils.__EPS__:
+                best = i
+            elif abs(convergence[i] - convergence[best]) < Utils.__EPS__ and distribution[i] > distribution[best]:
+                best = i
+                
+        return best
+    
     def getCurrentLatex(self, functionName):
         nRows = len(self.metrics.labels)
         nColumns = self.nResults - 1
@@ -288,17 +302,20 @@ class Analyzer:
             metrics = Metrics(pareto, [results[0][1]])
             for run in xrange(len(results[0][1])):
                 metrics.setSolutionsToCompare(0, run, None, None)
-                value = metrics.generationalDistance()
+                value = metrics.invertedGenerationalDistance()
                 if value*factor < bestValue*factor:
                     bestValue = value
                     generation[i] = run
         
         self.exportToImage(function, generation, True, resultNames, filename)
         
-    def _getFunctionLatex(self, functionName, reportDir, highlight):
+    def computeMetrics(self, functionName):
         pareto = self.getFunctionPareto(functionName)
         results = self.getFunctionResults(functionName, self.resultNames)
         self.metrics.computeMetrics(pareto, results)
+        
+    def _getFunctionLatex(self, functionName, reportDir, highlight):
+        self.computeMetrics(functionName)
         
         imageDir = reportDir + Analyzer.__IMAGES_DIR__
         if not os.path.exists(imageDir):
@@ -307,7 +324,7 @@ class Analyzer:
         desc = highlight
         if desc is None:
             desc = "all results"
-        caption = "run of %s for %s (according to generational distance)." % (desc, functionName)
+        caption = "run of %s for %s (according to IGD)." % (desc, functionName)
         
         bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_best_fun.png"
         self.generateBestImage(functionName, highlight, reportDir + bestImage)
@@ -325,7 +342,7 @@ class Analyzer:
         best = [False] * n
         maxValue = max(data)
         for i in xrange(n):
-            if abs(maxValue - data[i]) < MetricsCalc.__EPS__:
+            if abs(maxValue - data[i]) < Utils.__EPS__:
                 best[i] = True
                 
         return best
@@ -346,9 +363,9 @@ class Analyzer:
         if reportDir[-1] != "/":
             reportDir += "/"
         if os.path.exists(reportDir):
-            newReportDir = "%s-%s" % (reportDir[:-1], time.strftime("%Y%m%d-%H%M%S"))
-            print "Backing up previous report at '%s' in '%s'" % (reportDir, newReportDir)
-            shutil.move(reportDir, newReportDir)
+            newResultDir = "%s-%s" % (reportDir[:-1], time.strftime("%Y%m%d-%H%M%S"))
+            print "Backing up previous report at '%s' to '%s'" % (reportDir, newResultDir)
+            shutil.move(reportDir, newResultDir)
             
         print "Copying template files"
         shutil.copytree(Analyzer.__TEMPLATE_DIR__, reportDir)

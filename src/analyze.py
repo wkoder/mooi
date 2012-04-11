@@ -27,5 +27,6 @@ functions = []
 for functionName in analyzer.getFunctionNames():
     if len(args.functions) == 0 or True in [analyzer.functionMatches(fn, functionName) for fn in args.functions]:
         functions.append(functionName)
-        
+functions.sort()
+
 analyzer.generateReport(args.report, functions, args.highlight)

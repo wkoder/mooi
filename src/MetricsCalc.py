@@ -7,6 +7,7 @@ from Metrics import Metrics
 import numpy
 import types
 from symbol import factor
+import Utils
 
 class MetricsCalc():
         
@@ -17,7 +18,6 @@ class MetricsCalc():
     __MAX__ = -1 # Metric to maximize
     __CONV__ = 1 # Convergence metric
     __DIST__ = 2 # Distribution metric
-    __EPS__ = 1e-6
 
     def __init__(self):
         self.nSolutions = None
@@ -27,10 +27,16 @@ class MetricsCalc():
         solutionData = [solution[1] for solution in solutions]
         self.dim = len(solutionData[0][0][0])
         self.nSolutions = len(self.solutionNames)
+        metrics = Metrics(optimalPareto, solutionData)
         
-        unaryMetrics = ['Error ratio', 'Generational distance', 'Spacing', "Hypervolume"]
-        unaryMetricOptType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MAX__]
-        unaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__DIST__, [MetricsCalc.__CONV__, MetricsCalc.__DIST__]]
+        unaryMetrics = ['Error ratio', 'Generational distance', 'Generational distance (alt)', 'Inverted generational distance', \
+                        'Inverted generational distance (alt)', 'Spacing', "Hypervolume"]
+        unaryMetricOptType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MIN__, \
+                              MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MAX__]
+        unaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__CONV__, \
+                           MetricsCalc.__CONV__, MetricsCalc.__DIST__, [MetricsCalc.__CONV__, MetricsCalc.__DIST__]]
+        unaryMetricFunction = [metrics.errorRatio, metrics.generationalDistance, metrics.generationalDistanceAlt, metrics.invertedGenerationalDistance, \
+                               metrics.invertedGenerationalDistanceAlt, metrics.spacing, metrics.hypervolume]
         self.nUnaryMetrics = len(unaryMetrics)
         binaryMetrics = ['Coverage', 'Additive epsilon', 'Multiplicative epsilon']
         binaryMetricOptType = [MetricsCalc.__MAX__, MetricsCalc.__MIN__, MetricsCalc.__MIN__]
@@ -62,18 +68,15 @@ class MetricsCalc():
                         value = point[d] * (2 if point[d] > 0 else 0.5)
                         nadirPoint[d] = max(nadirPoint[d], value) # Make it twice far
         
-        metrics = Metrics(optimalPareto, solutionData)
         metrics.setHypervolumeReference(nadirPoint)
-        mean = [[], [], [], []]
-        std = [[], [], [], []]
+        mean = Utils.createListList(self.nUnaryMetrics)
+        std = Utils.createListList(self.nUnaryMetrics)
         for solutionA in xrange(self.nSolutions):
-            values = [[], [], [], []]
+            values = Utils.createListList(self.nUnaryMetrics)
             for runA in xrange(len(solutionData[solutionA])):
                 metrics.setSolutionsToCompare(solutionA, runA, None, None)
-                values[0].append(metrics.errorRatio())
-                values[1].append(metrics.generationalDistance())#["\\newcolumntype{K}{>{\\centering\\arraybackslash$}X<{$}}"]
-                values[2].append(metrics.spacing())
-                values[3].append(metrics.hypervolume())
+                for i in xrange(self.nUnaryMetrics):
+                    values[i].append(unaryMetricFunction[i]())
                 
             for m in xrange(len(values)):
                 mean[m].append(numpy.mean(values[m]))
@@ -95,7 +98,7 @@ class MetricsCalc():
                 
                 if row < len(unaryMetrics):
                     factor = unaryMetricOptType[row]
-                    if abs(m*factor - min(x*factor for x in mean[row] if x is not None)) < MetricsCalc.__EPS__:
+                    if abs(m*factor - min(x*factor for x in mean[row] if x is not None)) < Utils.__EPS__:
                         self.metricIsBest[row][column] = True
                     for i in xrange(len(mean[row])):
                         if i != column and mean[row][i] is not None and mean[row][column]*factor < mean[row][i]*factor:
@@ -116,7 +119,7 @@ class MetricsCalc():
             maxValue = max(points)
             for solutionIdx in xrange(self.nSolutions):
                 value = points[solutionIdx]
-                if abs(value - maxValue) < MetricsCalc.__EPS__:
+                if abs(value - maxValue) < Utils.__EPS__:
                     self.metricIsBest[row][solutionIdx] = True
                 self.metricMean[row][solutionIdx] = value
             row += 1

@@ -1,0 +1,3 @@
+# /bin/bash
+
+./src/select.py -n mocde-300 --functions "*" --results ../mocde/results/history/mocde-1 ../mocde/results/history/mocde-2 ../mocde/results/history/mocde-4 ../mocde/results/history/mocde-6 ../mocde/results/history/mocde-8 ../mocde/results/history/mocde-10

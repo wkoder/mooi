@@ -40,6 +40,30 @@ class Metrics(object):
         l = dList()
         map(l.append, x)
         return l
+
+    def generationalDistance(self):
+        """
+        Computes the generational distance from the obtained solution set to the optimal Pareto front.
+        """
+        return self.momet.generationalDistance(self.functions[self.a][self.aIdx], self.paretoOptimal)
+
+    def generationalDistanceAlt(self):
+        """
+        Computes the generational distance from the obtained solution set to the optimal Pareto front.
+        """
+        return self.momet.generationalDistanceAlt(self.functions[self.a][self.aIdx], self.paretoOptimal)
+
+    def invertedGenerationalDistance(self):
+        """
+        Computes the generational distance from the obtained solution set to the optimal Pareto front.
+        """
+        return self.momet.invertedGenerationalDistance(self.functions[self.a][self.aIdx], self.paretoOptimal)
+
+    def invertedGenerationalDistanceAlt(self):
+        """
+        Computes the generational distance from the obtained solution set to the optimal Pareto front.
+        """
+        return self.momet.invertedGenerationalDistanceAlt(self.functions[self.a][self.aIdx], self.paretoOptimal)
         
     def errorRatio(self):
         """
@@ -47,12 +71,6 @@ class Metrics(object):
         """
         return self.momet.errorRatio(self.functions[self.a][self.aIdx], self.paretoOptimal)
         
-    def generationalDistance(self):
-        """
-        Computes the generational distance from the obtained solution set to the optimal Pareto front.
-        """
-        return self.momet.generationalDistance(self.functions[self.a][self.aIdx], self.paretoOptimal)
-
     def spacing(self):
         """
         Computes the spacing of the obtained solution set.
