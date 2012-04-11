@@ -302,7 +302,7 @@ class Analyzer:
             metrics = Metrics(pareto, [results[0][1]])
             for run in xrange(len(results[0][1])):
                 metrics.setSolutionsToCompare(0, run, None, None)
-                value = metrics.invertedGenerationalDistance()
+                value = metrics.deltaP()
                 if value*factor < bestValue*factor:
                     bestValue = value
                     generation[i] = run
@@ -324,7 +324,7 @@ class Analyzer:
         desc = highlight
         if desc is None:
             desc = "all results"
-        caption = "run of %s for %s (according to IGD)." % (desc, functionName)
+        caption = "run of %s for %s (according to DeltaP)." % (desc, functionName)
         
         bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_best_fun.png"
         self.generateBestImage(functionName, highlight, reportDir + bestImage)

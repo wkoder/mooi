@@ -47,23 +47,29 @@ class Metrics(object):
         """
         return self.momet.generationalDistance(self.functions[self.a][self.aIdx], self.paretoOptimal)
 
-    def generationalDistanceAlt(self):
+    def generationalDistanceP(self):
         """
-        Computes the generational distance from the obtained solution set to the optimal Pareto front.
+        Computes the alternative generational distance from the obtained solution set to the optimal Pareto front.
         """
-        return self.momet.generationalDistanceAlt(self.functions[self.a][self.aIdx], self.paretoOptimal)
+        return self.momet.generationalDistanceP(self.functions[self.a][self.aIdx], self.paretoOptimal)
 
     def invertedGenerationalDistance(self):
         """
-        Computes the generational distance from the obtained solution set to the optimal Pareto front.
+        Computes the inverted generational distance from the obtained solution set to the optimal Pareto front.
         """
         return self.momet.invertedGenerationalDistance(self.functions[self.a][self.aIdx], self.paretoOptimal)
 
-    def invertedGenerationalDistanceAlt(self):
+    def invertedGenerationalDistanceP(self):
         """
-        Computes the generational distance from the obtained solution set to the optimal Pareto front.
+        Computes the alternative inverted generational distance from the obtained solution set to the optimal Pareto front.
         """
-        return self.momet.invertedGenerationalDistanceAlt(self.functions[self.a][self.aIdx], self.paretoOptimal)
+        return self.momet.invertedGenerationalDistanceP(self.functions[self.a][self.aIdx], self.paretoOptimal)
+        
+    def deltaP(self):
+        """
+        Computes the delta P from the obtained solution set to the optimal Pareto front.
+        """
+        return self.momet.deltaP(self.functions[self.a][self.aIdx], self.paretoOptimal)
         
     def errorRatio(self):
         """

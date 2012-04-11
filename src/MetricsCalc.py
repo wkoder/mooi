@@ -29,14 +29,14 @@ class MetricsCalc():
         self.nSolutions = len(self.solutionNames)
         metrics = Metrics(optimalPareto, solutionData)
         
-        unaryMetrics = ['Error ratio', 'Generational distance', 'Generational distance (alt)', 'Inverted generational distance', \
-                        'Inverted generational distance (alt)', 'Spacing', "Hypervolume"]
+        unaryMetrics = ['Error ratio', 'Generational distance', 'Inverted generational distance', 'Delta P', \
+                        'Spacing', "Hypervolume"]
         unaryMetricOptType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MIN__, \
-                              MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MAX__]
+                              MetricsCalc.__MIN__, MetricsCalc.__MAX__]
         unaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__CONV__, \
-                           MetricsCalc.__CONV__, MetricsCalc.__DIST__, [MetricsCalc.__CONV__, MetricsCalc.__DIST__]]
-        unaryMetricFunction = [metrics.errorRatio, metrics.generationalDistance, metrics.generationalDistanceAlt, metrics.invertedGenerationalDistance, \
-                               metrics.invertedGenerationalDistanceAlt, metrics.spacing, metrics.hypervolume]
+                           MetricsCalc.__DIST__, [MetricsCalc.__CONV__, MetricsCalc.__DIST__]]
+        unaryMetricFunction = [metrics.errorRatio, metrics.generationalDistance, metrics.invertedGenerationalDistance, metrics.deltaP, \
+                               metrics.spacing, metrics.hypervolume]
         self.nUnaryMetrics = len(unaryMetrics)
         binaryMetrics = ['Coverage', 'Additive epsilon', 'Multiplicative epsilon']
         binaryMetricOptType = [MetricsCalc.__MAX__, MetricsCalc.__MIN__, MetricsCalc.__MIN__]
