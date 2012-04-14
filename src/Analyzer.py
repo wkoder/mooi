@@ -17,8 +17,10 @@ import types
 class Analyzer:
     
     __PARETO__ = "pareto"
-    __TEMPLATE_FILE__ = "report.tex"
-    __TEMPLATE_DIR__ = Utils.__RESOURCES_DIR__ + "report/"
+    __TEMPLATE_REPORT_FILE__ = "report.tex"
+    __TEMPLATE_REPORT_DIR__ = Utils.__RESOURCES_DIR__ + "report/"
+    __TEMPLATE_PRESENTATION_FILE__ = "presentation.tex"
+    __TEMPLATE_PRESENTATION_DIR__ = Utils.__RESOURCES_DIR__ + "presentation/"
     __TEMPLATE_VAR__ = "%RESULTS%"
     __IMAGES_DIR__ = "images/"
 
@@ -215,23 +217,41 @@ class Analyzer:
         latex.append("                \\hline")
         return "\n".join(latex)
     
-    def _getTableStartLatex(self, nColumns, big=True):
-        latex = ["\\begin{table}"]
+    def _getTableStartLatex(self, nColumns, big, presentation):
+        latex = []
+        if presentation:
+            latex.append("\\begin{frame}")
+            latex.append("\\frametitle{\insertsubsection}")
+            latex.append("\\vspace*{-0.2cm}")
+            
+        latex.append("\\begin{table}")
         latex.append("    \\tiny \\centering")
         sizeFactor = ""
         if big:
-            latex.append("    \\begin{adjustwidth}{-3cm}{-3cm}")
-            sizeFactor = "1.5"
+            if presentation:
+                sizeFactor = "1.1"
+                cmOff = "-0.5"
+            else:
+                sizeFactor = "1.5"
+                cmOff = "-3"
+            latex.append("    \\begin{adjustwidth}{%scm}{%scm}" % (cmOff, cmOff))
+            
         latex.append("        \\begin{tabularx}{%s\\textwidth}{| c | c || %s |}" % (sizeFactor, " | ".join(["K"] * nColumns)))
         latex.append("        \\hline")
+        
         return "\n".join(latex)
     
-    def _getTableEndLatex(self, caption, label, big=True):
+    def _getTableEndLatex(self, caption, label, big, presentation):
         latex = ["        \\end{tabularx}"]
         if big:
             latex.append("    \\end{adjustwidth}")
-        latex.append("    \\caption{\\label{%s} %s}" % (label, caption))
+        if caption is not None and label is not None:
+            latex.append("    \\caption{\\label{%s} %s}" % (label, caption))
         latex.append("\\end{table}")
+        
+        if presentation:
+            latex.append("\\end{frame}")
+        
         return "\n".join(latex)
     
     def getCurrentBestResult(self):
@@ -248,11 +268,11 @@ class Analyzer:
                 
         return best
     
-    def getCurrentLatex(self, functionName):
+    def getCurrentLatex(self, functionName, presentation):
         nRows = len(self.metrics.labels)
         nColumns = self.nResults - 1
         
-        latex = [self._getTableStartLatex(nColumns)]
+        latex = [self._getTableStartLatex(nColumns, True, presentation)]
         latex.append(self._getBlockLatex("Metric / Algorithm", None, [self.metrics.solutionNames], None, None))
         latex.append("            \\hline")
         row = 0
@@ -272,15 +292,25 @@ class Analyzer:
                                              self.metrics.metricStd[row:toRow], self.metrics.metricIsBest[row:toRow]))
             row = toRow
         
-        latex.append(self._getTableEndLatex("Results for function %s." % functionName, "%s-results-table" % functionName.lower()))
+        latex.append(self._getTableEndLatex("Results for function %s." % functionName, "%s-results-table" % functionName.lower(), True, presentation))
         return "\n".join(latex)
     
-    def _getFigureLatex(self, functionName, highlight, filename, caption):
-        latex = ["\\begin{figure}[!ht]"]
+    def _getFigureLatex(self, functionName, highlight, filename, caption, presentation):
+        latex = []
+        if presentation:
+            latex.append("\\begin{frame}")
+            latex.append("\\frametitle{\insertsubsection}")
+            latex.append("\\vspace*{-0.2cm}")
+
+        latex.append("\\begin{figure}[!ht]")
         latex.append("\\centering")
         latex.append("\\includegraphics[width=\\textwidth]{%s}" % filename)
         latex.append("\\caption{%s}" % caption)
         latex.append("\\end{figure}")
+        
+        if presentation:
+            latex.append("\\end{frame}")
+        
         return "\n".join(latex)
     
     def generateBestImage(self, functionName, highlight, filename, worst=False):
@@ -314,7 +344,7 @@ class Analyzer:
         results = self.getFunctionResults(functionName, self.resultNames)
         self.metrics.computeMetrics(pareto, results)
         
-    def _getFunctionLatex(self, functionName, reportDir, highlight):
+    def _getFunctionLatex(self, functionName, reportDir, highlight, presentation):
         self.computeMetrics(functionName)
         
         imageDir = reportDir + Analyzer.__IMAGES_DIR__
@@ -328,13 +358,13 @@ class Analyzer:
         
         bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_best_fun.png"
         self.generateBestImage(functionName, highlight, reportDir + bestImage)
-        latex = [self._getFigureLatex(functionName, highlight, bestImage, "Best %s" % caption)]
+        latex = [self._getFigureLatex(functionName, highlight, bestImage, "Best %s" % caption, presentation)]
         
         worstImage = Analyzer.__IMAGES_DIR__ + functionName + "_worst_fun.png"
         self.generateBestImage(functionName, highlight, reportDir + worstImage, True)
-        latex.append(self._getFigureLatex(functionName, highlight, worstImage, "Worst %s" % caption))
+        latex.append(self._getFigureLatex(functionName, highlight, worstImage, "Worst %s" % caption, presentation))
         
-        latex.append(self.getCurrentLatex(functionName))
+        latex.append(self.getCurrentLatex(functionName, presentation))
         return "\n".join(latex)
     
     def _getBest(self, data):
@@ -347,19 +377,30 @@ class Analyzer:
                 
         return best
     
-    def _getAllSummaryLatex(self, functionNames, convPoints, distPoints, innerLatex):
-        best = [self._getBest(convPoints), self._getBest(distPoints)]
-        
-        latex = [self._getTableStartLatex(len(self.metrics.solutionNames), False)]
+    def _getStartAllSummaryLatex(self, presentation):
+        latex = [self._getTableStartLatex(len(self.metrics.solutionNames), False, presentation)]
         latex.append(self._getBlockLatex("Function / Algorithm", None, [self.metrics.solutionNames], None, None))
         latex.append("            \\hline")
-        latex += innerLatex
+        return latex
+    
+    def _getAllSummaryLatex(self, convPoints, distPoints, innerLatex, presentation, breakpoints):
+        best = [self._getBest(convPoints), self._getBest(distPoints)]
+        
+        latex = self._getStartAllSummaryLatex(presentation)
+        lastBreak = 0
+        for breakpoint in breakpoints:
+            latex += innerLatex[lastBreak:breakpoint]
+            lastBreak = breakpoint
+            latex.append(self._getTableEndLatex(None, None, False, presentation))
+            latex += self._getStartAllSummaryLatex(presentation)
+            
+        latex += innerLatex[lastBreak:]
         latex.append(self._getBlockLatex("\\textbf{Total}", ["Convergence", "Distribution"], [convPoints, distPoints], None, best))
-        latex.append(self._getTableEndLatex("Result summary.", "tab:results-summary", False))
+        latex.append(self._getTableEndLatex("Result summary.", "tab:results-summary", False, presentation))
         
         return "\n".join(latex)
     
-    def generateReport(self, reportDir, functionNames, highlight):
+    def generateReport(self, reportDir, functionNames, highlight, presentation):
         if reportDir[-1] != "/":
             reportDir += "/"
         if os.path.exists(reportDir):
@@ -367,14 +408,17 @@ class Analyzer:
             print "Backing up previous report at '%s' to '%s'" % (reportDir, newResultDir)
             shutil.move(reportDir, newResultDir)
             
+        latexFile = Analyzer.__TEMPLATE_PRESENTATION_FILE__ if presentation else Analyzer.__TEMPLATE_REPORT_FILE__
+        latexDir = Analyzer.__TEMPLATE_PRESENTATION_DIR__ if presentation else Analyzer.__TEMPLATE_REPORT_DIR__
+
         print "Copying template files"
-        shutil.copytree(Analyzer.__TEMPLATE_DIR__, reportDir)
+        shutil.copytree(latexDir, reportDir)
         print "Generating results latex"
-        resultsLatex = self._getLatex(functionNames, reportDir, highlight)
+        resultsLatex = self._getLatex(functionNames, reportDir, highlight, presentation)
         
         print "Adding results latex into report template"
-        template = open(Analyzer.__TEMPLATE_DIR__ + Analyzer.__TEMPLATE_FILE__, "r")
-        report = open(reportDir + Analyzer.__TEMPLATE_FILE__, "w")
+        template = open(latexDir + latexFile, "r")
+        report = open(reportDir + latexFile, "w")
         for line in template:
             if line.strip() == Analyzer.__TEMPLATE_VAR__:
                 report.write(resultsLatex)
@@ -385,28 +429,33 @@ class Analyzer:
         report.close()
         print "Report successfully generated!"
     
-    def _getLatex(self, functionNames, reportDir, highlight):
+    def _getLatex(self, functionNames, reportDir, highlight, presentation):
         latex = []
         innerSummaryLatex = []
         convPoints = [0] * (self.nResults - 1)
         distPoints = [0] * (self.nResults - 1)
         idx = 0
+        breakpoints = []
         for functionName in functionNames:
             idx += 1
             print "Generating results for function %s (%d/%d)" % (functionName, idx, len(functionNames))
-            latex.append(self._getFunctionLatex(functionName, reportDir, highlight))
-            if idx % 7 == 0:
+            latex.append(self._getFunctionLatex(functionName, reportDir, highlight, presentation))
+            if idx % 7 == 0 and not presentation:
                 latex.append("\\clearpage")
             latex.append("")
             innerSummaryLatex.append(self._getBlockLatex(functionName, ["Convergence", "Distribution"], \
                                                          [self.metrics.convPoints, self.metrics.distPoints], None, \
                                                          self.metrics.metricIsBest[-2:]))
-            innerSummaryLatex.append("            \\hline")
+            if presentation and idx % 14 == 0:
+                breakpoints.append(len(innerSummaryLatex))
+            else:
+                innerSummaryLatex.append("            \\hline")
+                
             for i in xrange(self.nResults - 1):
                 convPoints[i] += self.metrics.convPoints[i]
                 distPoints[i] += self.metrics.distPoints[i]
         
         print "Generating all summary results"
-        latex.append(self._getAllSummaryLatex(functionNames, convPoints, distPoints, innerSummaryLatex))
+        latex.append(self._getAllSummaryLatex(convPoints, distPoints, innerSummaryLatex, presentation, breakpoints))
         return "\n".join(latex)
     

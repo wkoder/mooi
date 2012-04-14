@@ -13,9 +13,15 @@ parser = argparse.ArgumentParser(description="Analyze Multi-Objective Optimizati
 parser.add_argument("--results", "-r", metavar="RESULT", nargs="+", help="results directory of an algorithm")
 parser.add_argument("--functions", "-f", metavar="FUNCTION", nargs="*", help="function to test")
 parser.add_argument("--pareto", "-p", help="true Pareto front directory")
-parser.add_argument("--report", "-R", default="report-%s" % time.strftime("%Y%m%d-%H%M%S"), help="target report directory")
+parser.add_argument("--report", "-R", help="target report directory")
 parser.add_argument("--highlight", "-hl", nargs="?", help="result name to highlight")
+parser.add_argument("--presentation", action='store_const', const=True, default=False, help="if the document to generate is a presentation")
 args = parser.parse_args()
+
+reportDir = args.report
+if reportDir is None:
+    reportDir = "presentation" if args.presentation else "report"
+    reportDir += "-" + time.strftime("%Y%m%d-%H%M%S")
 
 analyzer = Analyzer()
 analyzer.setResultDirectories(args.results)
@@ -29,4 +35,4 @@ for functionName in analyzer.getFunctionNames():
         functions.append(functionName)
 functions.sort()
 
-analyzer.generateReport(args.report, functions, args.highlight)
+analyzer.generateReport(reportDir, functions, args.highlight, args.presentation)
