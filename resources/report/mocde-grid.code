@@ -1,16 +1,20 @@
-si el individuo X es dominado por otro individuo en el archivo A
-	regresar no
-fin si
+// Actualizar ideal
+para i desde 1 hasta k
+	si X[i] < ideal[i]
+		ideal[i] = X[i]
+	fin si
+fin para
 
-si el individuo X domina a algún individuo en el archivo A
-	eliminar los individuos en el archivo A que son dominados por X
-	regresar si
-fin si
+agregado = falso
+para i desde 1 hasta p
+	subproblema = A[i]
+	f1 = chebyshev(subproblema, lambda[i])
+	f2 = chebyshev(X, lambda[i])
+	
+	si f2 < f1
+		A[i] = X
+		agregado = cierto
+	fin si
+fin para
 
-si el archivo no está lleno
-	agregar X al archivo A
-sino y agregar X al archivo A incrementa la diversidad
-	reemplazar con X al individuo en la región más densa del archivo A
-fin si
-
-regresar si X se encuentra en una zona menos densa que su padre E
+regresar agregado

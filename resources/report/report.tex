@@ -36,23 +36,27 @@
 \maketitle
 
 \section*{Implementación actual}
-La implementación actual está basada en PAES. Ésta funciona así:
+La implementación actual está basada en el funcionamiento general de PAES con un archivo similar a MOEA/D. Ésta funciona así:
 
 \verbatiminput{mocde-main.code}
 
-Donde $F$ es el factor de variación diferencial, $CR$ la razón de cruza, $n$ el número de parámetros de entrada y $np$ el tamaño de la población.
+Donde $F$ es el factor de variación diferencial, $CR$ la razón de cruza, $n$ el número de parámetros de entrada, $p$ el tamaño de la población y $w$ el parámetro de anchura. El parámetro de anchura $w$ permite ajustar la desviación estándar inicial de la búsqueda, el cual ha demostrado tener un papel importante en la convergencia del algoritmo.
 
-Para determinar si un individuo se agrega al archivo, se realiza lo siguiente:
+Para determinar si un individuo se agrega al archivo y se sustituye al individuo actual por su hijo, se realiza lo siguiente:
 
 \verbatiminput{mocde-grid.code}
 
-Este ultimo algoritmo trata de indicar cuándo debe sustituirse el individuo actual por su hijo.
+Donde $ideal$ es el vector con los valores mínimos de cada evaluación y $A[i]$ es la solución $i$ en el archivo.
 
-Un factor que se ha mostrado importante, y parece necesitar de calibración, es el tamaño de la desviación estándar inicial utilizada para tomar muestras de la población.
+La escalarización de Chebyshev se realiza como sigue:
+
+\verbatiminput{mocde-chebyshev.code}
+
+Donde $k$ es el número de objetivos a optimizar, $F$ la evaluación de un individuo $X$ y $lambda$ un conjunto de vectores de peso, encargado de la distribución de los resultados finales.
 
 \section*{Resultados}
 
-Varias funciones de prueba se han utilizado para comparar los resultados obtenidos por la implementación actual de mocDE. Las siguientes figuras muestran el desempeño alcanzado por mocDE, MOEA/D, PAES y NSGA-II en comparación con el frente de Pareto real. Así mismo, las tablas muestran la media y la desviación estándar de los resultados de algunas métricas calculadas sobre 20 ejecuciones de dichos algoritmos. Las figuras muestran la mejor y peor ejecuciones de mocDE, de acuerdo a la distancia generacional, junto al respectivo frente de Pareto de cada función de prueba. En la tabla \ref{tab:results-summary} se puede visualizar el resumen de todos los resultados obtenidos.
+Varias funciones de prueba se han utilizado para comparar los resultados obtenidos por la implementación actual de mocDE. Las siguientes figuras muestran el mejor y peor desempeño alcanzado por mocDE en comparación con el frente de Pareto real. Así mismo, las tablas muestran la media y la desviación estándar de los resultados de algunas métricas calculadas sobre 20 ejecuciones de mocDE, MOEA/D, PAES y NSGA-II. En la tabla \ref{tab:results-summary} se puede visualizar el resumen de todos los resultados obtenidos.
 
 Los parámetros utilizados para las funciones de prueba son los detallados en la tabla \ref{tab:params}. Donde $n_{var}$ es el número de variables del problema.
 
@@ -66,12 +70,13 @@ Los parámetros utilizados para las funciones de prueba son los detallados en la
                 & Population size & 100 \\
                 & Differential variation & 0.9 \\
                 & Crossover probability & 0.3 \\
+                & Search width & (0.5 .. 15) \\
                 \hline
             \multirow{8}{*}{\textbf{MOEA/D}}
                 & Evaluations & 300000 \\
-                & Population size & 100 (2-D), 600 (3-D) \\
-                & Niche size & 100 (2-D), 150 (3-D) \\
-                & Update limit & 10 (2-D), 15 (3-D) \\
+                & Population size & 100 \\
+                & Niche size & 100 (2D), 150 (3D) \\
+                & Update limit & 10 (2D), 15 (3D) \\
                 & Differential variation & 1.0 \\
                 & Crossover probability & 0.5 \\
                 & Mutation rate & 1.0 / n_{var} \\
@@ -80,10 +85,9 @@ Los parámetros utilizados para las funciones de prueba son los detallados en la
             \multirow{6}{*}{\textbf{PAES}}
                 & Evaluations & 300000 \\
                 & Archive size & 100 \\
-                & Mutation rate & 0.01 \\
-                & Grid depth & 4 \\
-                & Gene length & 30*n_{var} \\
-                & Number of alleles & 2 \\
+                & Mutation rate & 1.0 / n_{var} \\
+                & Bisection & 5 \\
+                & Distribution index & 20 \\
                 \hline
             \multirow{4}{*}{\textbf{NSGA-II}}
                 & Evaluations & 300000 \\
@@ -109,10 +113,10 @@ El progreso en los resultados puede ser condensado como se muestra en la figura 
 
 Actualmente se tienen los siguientes objetivos:
 \begin{itemize}
-\item Investigar funciones de densidad para saber cuándo reemplazar una solución por otra.
-\item Revisitar la escalarización de Chebyshev ya que se encontró un error de implementación en ella.
-\item Investigar operadores y técnicas utilizadas en micro algoritmos genéticos.
+\item Profundizar en los resultados de las pruebas y su relación con el parámetro $w$ de mocDE.
+\item Comenzar a escribir la tesis.
 \end{itemize}
+
 
 \section*{Cronograma de Actividades}
 
