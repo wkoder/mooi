@@ -29,7 +29,7 @@ analyzer.setPareto(pareto)
 functions = []
 for functionName in analyzer.getFunctionNames():
     if len(args.functions) == 0 or True in [analyzer.functionMatches(fn, functionName) for fn in args.functions]:
-        functions.append(functionName.lower())
+        functions.append(functionName.upper())
 functions.sort()
 
 resultDir = args.name
@@ -37,7 +37,7 @@ if resultDir[-1] == "/":
     resultDir = resultDir[:-1];
 if os.path.exists(resultDir):
     newResultDir = "%s-%s" % (resultDir, time.strftime("%Y%m%d-%H%M%S"))
-    print "Backing up previous report at '%s' to '%s'" % (resultDir, newResultDir)
+    print "Backing up previous selection at '%s' to '%s'" % (resultDir, newResultDir)
     shutil.move(resultDir, newResultDir)
 
 os.mkdir(resultDir)
@@ -59,10 +59,9 @@ for functionName in functions:
         genPos = max(-1, fnId.rfind("."), fnId.rfind("-"), fnId.rfind("_"))
         if genPos >= 0:
             fnId = fnId[:genPos]
-        if fnId == functionName:
+        if fnId == functionName.lower():
 #            print "        Copying file '%s' to '%s'" % (filename, resultDir)
             filesCopied += 1
             shutil.copy(filename, resultDir)
             
     print "    Copied %d files!" % filesCopied
-    

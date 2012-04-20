@@ -1,3 +1,0 @@
-# /bin/bash
-
-./src/analyze.py -R report-paesmocde-$1 --results ../mocde/results/mocde-$1 ../mocde/results/paes-$1 --functions "*" -hl mocde-$1

@@ -1,3 +1,9 @@
 # /bin/bash
 
-./src/select.py -n mocde-300 --functions "*" --results ../mocde/results/history/mocde-0.5 ../mocde/results/history/mocde-1 ../mocde/results/history/mocde-2 ../mocde/results/history/mocde-3 ../mocde/results/history/mocde-4 ../mocde/results/history/mocde-5 ../mocde/results/history/mocde-6 ../mocde/results/history/mocde-7 ../mocde/results/history/mocde-8 ../mocde/results/history/mocde-9 ../mocde/results/history/mocde-10 ../mocde/results/history/mocde-11 ../mocde/results/history/mocde-12 ../mocde/results/history/mocde-13 ../mocde/results/history/mocde-14 ../mocde/results/history/mocde-15
+path=../mocde/results/history/$1
+path_all=$path/all
+
+./src/select.py -n $path/mocde --functions "*" --results $path_all/mocde-1 $path_all/mocde-2 $path_all/mocde-3 $path_all/mocde-4 $path_all/mocde-5 $path_all/mocde-6 $path_all/mocde-7 $path_all/mocde-8 $path_all/mocde-9 $path_all/mocde-10 $path_all/mocde-11 $path_all/mocde-12 $path_all/mocde-13 $path_all/mocde-14 $path_all/mocde-15 > selection-$1.out
+
+./generate-report $1
+

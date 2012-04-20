@@ -1,0 +1,8 @@
+# /bin/bash
+
+./select 5
+./select 10
+./select 20
+./select 50
+#./select 300
+
