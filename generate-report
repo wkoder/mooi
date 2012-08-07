@@ -1,5 +1,0 @@
-# /bin/bash
-
-path=../mocde/results/history/$1
-
-./src/analyze.py -R report-$1 --results $path/mocde $path/moead $path/paes $path/nsga2 --functions "*" -hl mocde

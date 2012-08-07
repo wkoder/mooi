@@ -29,13 +29,13 @@ class MetricsCalc():
         self.nSolutions = len(self.solutionNames)
         metrics = Metrics(optimalPareto, solutionData)
         
-        unaryMetrics = ['Generational distance', 'Inverted generational distance', 'Delta P', \
+        unaryMetrics = ['Inverted generational distance', 'Delta P', \
                         'Spacing', "Hypervolume"]
-        unaryMetricOptType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, MetricsCalc.__MIN__, \
+        unaryMetricOptType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, \
                               MetricsCalc.__MIN__, MetricsCalc.__MAX__]
-        unaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__CONV__, \
+        unaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, \
                            MetricsCalc.__DIST__, [MetricsCalc.__CONV__, MetricsCalc.__DIST__]]
-        unaryMetricFunction = [metrics.generationalDistance, metrics.invertedGenerationalDistance, metrics.deltaP, \
+        unaryMetricFunction = [metrics.invertedGenerationalDistance, metrics.deltaP, \
                                metrics.spacing, metrics.hypervolume]
         self.nUnaryMetrics = len(unaryMetrics)
         binaryMetrics = ['Coverage', 'Additive epsilon', 'Multiplicative epsilon']
@@ -98,16 +98,18 @@ class MetricsCalc():
                 
                 if row < len(unaryMetrics):
                     factor = unaryMetricOptType[row]
-                    if abs(m*factor - min(x*factor for x in mean[row] if x is not None)) < Utils.__EPS__:
+                    if abs(round(m*factor, Utils.__ROUND__) - 
+                           round(min(x*factor for x in mean[row] if x is not None), Utils.__ROUND__)) < Utils.__EPS__:
                         self.metricIsBest[row][column] = True
                     for i in xrange(len(mean[row])):
-                        if i != column and mean[row][i] is not None and mean[row][column]*factor < mean[row][i]*factor:
+                        if i != column and mean[row][i] is not None and \
+                                round(mean[row][column]*factor, Utils.__ROUND__) <= round(mean[row][i]*factor, Utils.__ROUND__):
                             self._addMetricPoints(1.0 / (self.nSolutions - 1), column, unaryMetricType[row])
                 elif row >= len(unaryMetrics):
                     offset = row - (row - len(unaryMetrics)) % self.nSolutions
                     metricIdx = int((row - len(unaryMetrics)) / self.nSolutions)
                     factor = binaryMetricOptType[metricIdx]
-                    if m*factor > mean[offset + column][row - offset]*factor:
+                    if round(m*factor, Utils.__ROUND__) >= round(mean[offset + column][row - offset]*factor, Utils.__ROUND__):
                         self.metricIsBest[row][column] = True
                         self._addMetricPoints(1.0 / (self.nSolutions - 1), column, binaryMetricType[metricIdx])
                 

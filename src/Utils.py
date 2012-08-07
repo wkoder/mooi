@@ -10,6 +10,7 @@ import os
 
 __RESOURCES_DIR__ = os.path.dirname(__file__) + "/../resources/"
 __EPS__ = 1e-6
+__ROUND__ = 4
 
 def dominates(x, y):
     """

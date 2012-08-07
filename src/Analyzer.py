@@ -13,6 +13,7 @@ import os
 import shutil
 import time
 import types
+import sys
 
 class Analyzer:
     
@@ -122,6 +123,7 @@ class Analyzer:
     
     def _scanDirectory(self, directory):
         if not os.path.exists(directory) or not os.path.isdir(directory):
+            print >> sys.stderr, "Directory '%s' does not exist!" % directory
             return
         
         resultName = self.getResultName(directory)

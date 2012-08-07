@@ -1,9 +1,0 @@
-max = 0
-para i desde 1 hasta k
-	v = (F[i] - ideal[i]) * lambda[i]
-	if v > max
-		max = v
-	fin si
-fin para
-
-regresar max
