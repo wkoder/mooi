@@ -3,7 +3,10 @@
 path=../mocde/results/history/$1
 #mocde=mocde-randbest1-1.0-0.1
 mocde=mocde
-FUNCTIONS="zdt* dtlz*"
-#FUNCTIONS="zdt* dtlz* uf*"
+#report=AAA
+#functions="zdt1"
+report=report-$1
+functions="zdt* dtlz*"
+#functions="zdt* dtlz* uf*"
 
-./src/analyze.py -R report-$1 --results $path/$mocde $path/moead $path/paes $path/nsga2 --functions $FUNCTIONS -hl $mocde
+./src/analyze.py -R $report --results $path/$mocde $path/moead $path/paes $path/nsga2 --functions $functions -hl $mocde

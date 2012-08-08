@@ -4,10 +4,13 @@ Created on Feb 22, 2012
 
 @author: Moises Osorio [WCoder]
 '''
+from LatexReporter import LatexReporter
 from Analyzer import Analyzer
+
 import argparse
 import os
 import time
+from Utils import functionSorter, functionMatches
 
 parser = argparse.ArgumentParser(description="Analyze Multi-Objective Optimization algorithm results against true Pareto fronts")
 parser.add_argument("--results", "-r", metavar="RESULT", nargs="+", help="results directory of an algorithm")
@@ -23,16 +26,16 @@ if reportDir is None:
     reportDir = "presentation" if args.presentation else "report"
     reportDir += "-" + time.strftime("%Y%m%d-%H%M%S")
 
-analyzer = Analyzer()
-analyzer.setResultDirectories(args.results)
+reporter = LatexReporter()
+reporter.setResultDirectories(args.results)
 pareto = args.pareto
 if pareto is None:
     pareto = os.path.dirname(__file__) + "/../resources/" + Analyzer.__PARETO__
-analyzer.setPareto(pareto)
+reporter.setPareto(pareto)
 functions = []
-for functionName in analyzer.getFunctionNames():
-    if len(args.functions) == 0 or True in [analyzer.functionMatches(fn, functionName) for fn in args.functions]:
+for functionName in reporter.getFunctionNames():
+    if len(args.functions) == 0 or True in [functionMatches(fn, functionName) for fn in args.functions]:
         functions.append(functionName)
-functions.sort()
+functions.sort(cmp=functionSorter)
 
-analyzer.generateReport(reportDir, functions, args.highlight, args.presentation)
+reporter.generateReport(reportDir, functions, args.highlight, args.presentation)

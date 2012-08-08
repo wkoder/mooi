@@ -4,10 +4,12 @@ Created on Feb 20, 2012
 @author: Moises Osorio [WCoder]
 '''
 from Metrics import Metrics
+import Utils
+
 import numpy
+from scipy.stats import scoreatpercentile
 import types
 from symbol import factor
-import Utils
 
 class MetricsCalc():
         
@@ -29,7 +31,7 @@ class MetricsCalc():
         self.nSolutions = len(self.solutionNames)
         metrics = Metrics(optimalPareto, solutionData)
         
-        unaryMetrics = ['Inverted generational distance', 'Delta P', \
+        self.unaryMetricNames = ['Inverted generational distance', 'Delta P', \
                         'Spacing', "Hypervolume"]
         unaryMetricOptType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, \
                               MetricsCalc.__MIN__, MetricsCalc.__MAX__]
@@ -37,14 +39,14 @@ class MetricsCalc():
                            MetricsCalc.__DIST__, [MetricsCalc.__CONV__, MetricsCalc.__DIST__]]
         unaryMetricFunction = [metrics.invertedGenerationalDistance, metrics.deltaP, \
                                metrics.spacing, metrics.hypervolume]
-        self.nUnaryMetrics = len(unaryMetrics)
+        self.nUnaryMetrics = len(self.unaryMetricNames)
         binaryMetrics = ['Coverage', 'Additive epsilon', 'Multiplicative epsilon']
         binaryMetricOptType = [MetricsCalc.__MAX__, MetricsCalc.__MIN__, MetricsCalc.__MIN__]
         binaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__CONV__]
         self.nBinaryMetrics = len(binaryMetrics)
         self.labels = []
         self.sublabels = []
-        self.labels += unaryMetrics
+        self.labels += self.unaryMetricNames
         self.sublabels += [None] * len(self.labels)
         for binaryMetric in binaryMetrics:
             self.labels += [binaryMetric] * self.nSolutions
@@ -58,6 +60,10 @@ class MetricsCalc():
         nLabels = len(self.labels)
         self.metricMean = [[None] * (self.nSolutions) for _ in xrange(nLabels)]
         self.metricStd = [[None] * (self.nSolutions) for _ in xrange(nLabels)]
+        self.metricMin = [[None] * (self.nSolutions) for _ in xrange(nLabels)]
+        self.metricMax = [[None] * (self.nSolutions) for _ in xrange(nLabels)]
+        self.metricQ1 = [[None] * (self.nSolutions) for _ in xrange(nLabels)]
+        self.metricQ3 = [[None] * (self.nSolutions) for _ in xrange(nLabels)]
         self.metricIsBest = [[False] * (self.nSolutions) for _ in xrange(nLabels)]
         
         nadirPoint = [-(1<<30)] * self.dim
@@ -71,6 +77,10 @@ class MetricsCalc():
         metrics.setHypervolumeReference(nadirPoint)
         mean = Utils.createListList(self.nUnaryMetrics)
         std = Utils.createListList(self.nUnaryMetrics)
+        mmin = Utils.createListList(self.nUnaryMetrics)
+        mmax = Utils.createListList(self.nUnaryMetrics)
+        q1 = Utils.createListList(self.nUnaryMetrics)
+        q3 = Utils.createListList(self.nUnaryMetrics)
         for solutionA in xrange(self.nSolutions):
             values = Utils.createListList(self.nUnaryMetrics)
             for runA in xrange(len(solutionData[solutionA])):
@@ -81,6 +91,10 @@ class MetricsCalc():
             for m in xrange(len(values)):
                 mean[m].append(numpy.mean(values[m]))
                 std[m].append(numpy.std(values[m]))
+                mmin[m].append(numpy.min(values[m]))
+                mmax[m].append(numpy.max(values[m]))
+                q1[m].append(scoreatpercentile(values[m], 25))
+                q3[m].append(scoreatpercentile(values[m], 75))
 
         for metric in [MetricsCalc.COVERAGE, MetricsCalc.ADDITIVE_EPSILON, MetricsCalc.MULTIPLICATIVE_EPSILON]:
             meanMetric, stdMetric = self._getMetric(solutionData, metric, metrics, self.solutionNames)
@@ -96,7 +110,7 @@ class MetricsCalc():
                 if m is None or s is None:
                     continue
                 
-                if row < len(unaryMetrics):
+                if row < len(self.unaryMetricNames):
                     factor = unaryMetricOptType[row]
                     if abs(round(m*factor, Utils.__ROUND__) - 
                            round(min(x*factor for x in mean[row] if x is not None), Utils.__ROUND__)) < Utils.__EPS__:
@@ -105,9 +119,9 @@ class MetricsCalc():
                         if i != column and mean[row][i] is not None and \
                                 round(mean[row][column]*factor, Utils.__ROUND__) <= round(mean[row][i]*factor, Utils.__ROUND__):
                             self._addMetricPoints(1.0 / (self.nSolutions - 1), column, unaryMetricType[row])
-                elif row >= len(unaryMetrics):
-                    offset = row - (row - len(unaryMetrics)) % self.nSolutions
-                    metricIdx = int((row - len(unaryMetrics)) / self.nSolutions)
+                elif row >= len(self.unaryMetricNames):
+                    offset = row - (row - len(self.unaryMetricNames)) % self.nSolutions
+                    metricIdx = int((row - len(self.unaryMetricNames)) / self.nSolutions)
                     factor = binaryMetricOptType[metricIdx]
                     if round(m*factor, Utils.__ROUND__) >= round(mean[offset + column][row - offset]*factor, Utils.__ROUND__):
                         self.metricIsBest[row][column] = True
@@ -115,6 +129,11 @@ class MetricsCalc():
                 
                 self.metricMean[row][column] = m
                 self.metricStd[row][column] = s
+                if row < len(self.unaryMetricNames):
+                    self.metricMin[row][column] = mmin[row][column]
+                    self.metricMax[row][column] = mmax[row][column]
+                    self.metricQ1[row][column] = q1[row][column]
+                    self.metricQ3[row][column] = q3[row][column]
         
         row = nLabels - 2
         for points in [self.convPoints, self.distPoints]:
@@ -143,7 +162,6 @@ class MetricsCalc():
             mean.append([0] * n)
             std.append([0] * n)
             for b in xrange(n):
-#                print "Calculating %s of %s and %s" % (metric, solutionNames[a], solutionNames[b])
                 if a == b:
                     mean[a][b] = std[a][b] = None
                     continue

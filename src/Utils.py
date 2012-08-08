@@ -99,3 +99,33 @@ def createListList(n):
     for _ in xrange(n):
         x.append([])
     return x
+
+def _extractFunction(f):
+    idx = len(f)
+    while idx > 0 and f[idx-1].isdigit():
+        idx = idx - 1
+    n = 0 if idx == len(f) else int(f[idx:])
+    return [f[0:idx], n]
+
+def functionSorter(a, b):
+    af = _extractFunction(a)
+    bf = _extractFunction(b)
+    if af[0] != bf[0]:
+        return cmp(af[0], bf[0])
+    return af[1] - bf[1]
+
+def functionMatches(desc, testName):
+    desc = desc.lower()
+    testName = testName.lower()
+    if desc == testName:
+        return True
+    if desc.endswith("*") and testName.startswith(desc[:-1]):
+        return True
+    try:
+        testDim = None # FIXME: Get dimension?
+        if desc.endswith("d") and testDim == int(desc[:-1]):
+            return True
+    except:
+        None
+    return False
+    
