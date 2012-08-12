@@ -9,4 +9,4 @@ report=report-$1
 functions="zdt* dtlz*"
 #functions="zdt* dtlz* uf*"
 
-./src/analyze.py -R $report --results $path/$mocde $path/moead $path/paes $path/nsga2 --functions $functions -hl $mocde
+./src/analyze.py -R $report --results $path/$mocde $path/moead $path/paes $path/nsga2 --functions $functions #-hl $mocde

@@ -11,6 +11,26 @@ import os
 __RESOURCES_DIR__ = os.path.dirname(__file__) + "/../resources/"
 __EPS__ = 1e-6
 __ROUND__ = 4
+__RESULT_NAME_LATEX__ = {"moead": "MOEA/D", "paes": "PAES", "nsga2": "NSGA-II", "mocde": "pe-mocde", 
+                           "mocde-L10": "ne-mocde$_{10}$", "mocde-L20": "ne-mocde$_{20}$", "mocde-L50": "ne-mocde$_{50}$"}
+__METRIC_NAME_LATEX__ = {"Inverted Generational Distance": "$I_{IGD}$", "Delta P": "$I_{\Delta_p}$", "Spacing": "$I_S$", "Hypervolume": "$I_H$", 
+                         "Coverage": "$I_C$", "Additive Epsilon": "$I_{\epsilon^+}$", "Multiplicative Epsilon": "$I_{\epsilon^*}$"}
+__FUNCTION_NAME_LATEX__ = {}
+
+def getResultNameLatex(name):
+    if name in __RESULT_NAME_LATEX__:
+        return __RESULT_NAME_LATEX__[name]
+    return name
+    
+def getMetricNameLatex(name):
+    if name in __METRIC_NAME_LATEX__:
+        return __METRIC_NAME_LATEX__[name]
+    return name
+    
+def getFunctionNameLatex(name):
+    if name in __FUNCTION_NAME_LATEX__:
+        return __FUNCTION_NAME_LATEX__[name]
+    return name
 
 def dominates(x, y):
     """

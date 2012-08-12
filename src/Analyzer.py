@@ -17,9 +17,9 @@ class Analyzer:
     
     __PARETO__ = "pareto"
     __IMAGES_DIR__ = "images/"
-
-    def __init__(self):
-        self.plotter = ResultPlotter()
+    
+    def __init__(self, plotterTerminal="png"):
+        self.plotter = ResultPlotter(plotterTerminal)
         self.metrics = MetricsCalc()
         
         self.pareto = None
@@ -77,12 +77,24 @@ class Analyzer:
             self.exportToImage(function, generation, True, resultNames, filename + "_fun.png")
             self.exportToImage(function, generation, False, resultNames, filename + "_var.png")
     
-    def exportToImage(self, function, generation, functionSpace, resultNames, filename):
+    def exportToImage(self, function, generation, functionSpace, resultNames, filename, latex=False):
         toPlot = self._getSolutionsToPlot(function, generation, functionSpace, resultNames)
-        axis = ["x1", "x2", "x3"]
         if functionSpace:
-            axis = ["F1", "F2", "F3"]
-        self.plotter.plotSolution(toPlot, function.functionName, None if functionSpace else "Parameter space", axis[0], axis[1], axis[2], filename)
+            if latex:
+                axis = ["$f_1$", "$f_2$", "$f_3$"]
+            else:
+                axis = ["F1", "F2", "F3"]
+        else:
+            if latex:
+                axis = ["$x_1$", "$x_2$", "$x_3$"]
+            else:
+                axis = ["x1", "x2", "x3"]
+                
+        functionName = Utils.getFunctionNameLatex(function.functionName) if latex else function.functionName
+        if latex:
+            for solution in toPlot:
+                solution[0] = Utils.getResultNameLatex(solution[0])
+        self.plotter.plotSolution(toPlot, functionName, None if functionSpace else "Parameter space", axis[0], axis[1], axis[2], filename)
       
     def _getSolutionsToPlot(self, problem, generation, functionSpace, resultNames):
         solutions = []
@@ -194,7 +206,7 @@ class Analyzer:
                 
         return best
     
-    def generateMetricImage(self, functionName, metricName, metricIdx, filename):
+    def generateMetricImage(self, functionName, metricName, metricIdx, filename, latex=False):
         print "    Generating figure for metric %s in problem %s" % (metricName, functionName)
         results = []
         for i in xrange(self.nResults - 1):
@@ -202,13 +214,15 @@ class Analyzer:
                                        self.metrics.metricQ3[metricIdx][i], self.metrics.metricMax[metricIdx][i]], ""]
             results.append(result)
             
-        self.plotter.plotIndicators(results, functionName, "", "Algoritmo", metricName, filename)
+        fname = Utils.getFunctionNameLatex(functionName) if latex else functionName
+        mname = Utils.getFunctionNameLatex(metricName) if latex else metricName
+        self.plotter.plotIndicators(results, fname, "", "", mname, filename)
     
-    def generateBestImage(self, functionName, highlight, filename, worst=False):
-        print "    Generating %s figure for %s" % ("worst" if worst else "best", functionName)
+    def generateBestImage(self, functionName, result, filename, worst=False, latex=False):
+        print "    Generating %s figure of %s for %s" % ("worst" if worst else "best", result, functionName)
         function = self.functions[functionName.lower()]
-        resultNames = [Analyzer.__PARETO__, highlight]
-        if highlight is None:
+        resultNames = [Analyzer.__PARETO__, result]
+        if result is None:
             resultNames = self.resultNames
         generation = [0] * len(resultNames)
         
@@ -228,7 +242,7 @@ class Analyzer:
                     bestValue = value
                     generation[i] = run
         
-        self.exportToImage(function, generation, True, resultNames, filename)
+        self.exportToImage(function, generation, True, resultNames, filename, latex)
         
     def computeMetrics(self, functionName):
         pareto = self.getFunctionPareto(functionName)
