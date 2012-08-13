@@ -17,6 +17,7 @@ class Analyzer:
     
     __PARETO__ = "pareto"
     __IMAGES_DIR__ = "images/"
+    __COLORS__ = ["#dddddd", "#9400D3", "green", "blue", "red", "orange"]
     
     def __init__(self, plotterTerminal="png"):
         self.plotter = ResultPlotter(plotterTerminal)
@@ -77,7 +78,7 @@ class Analyzer:
             self.exportToImage(function, generation, True, resultNames, filename + "_fun.png")
             self.exportToImage(function, generation, False, resultNames, filename + "_var.png")
     
-    def exportToImage(self, function, generation, functionSpace, resultNames, filename, latex=False):
+    def exportToImage(self, function, generation, functionSpace, resultNames, filename, latex=False, window=None):
         toPlot = self._getSolutionsToPlot(function, generation, functionSpace, resultNames)
         if functionSpace:
             if latex:
@@ -94,15 +95,16 @@ class Analyzer:
         if latex:
             for solution in toPlot:
                 solution[0] = Utils.getResultNameLatex(solution[0])
-        self.plotter.plotSolution(toPlot, functionName, None if functionSpace else "Parameter space", axis[0], axis[1], axis[2], filename)
+        self.plotter.plotSolution(toPlot, functionName, None if functionSpace else "Parameter space", \
+                                  axis[0], axis[1], axis[2], window, filename)
       
     def _getSolutionsToPlot(self, problem, generation, functionSpace, resultNames):
         solutions = []
-        k = 0
         if Analyzer.__PARETO__ in resultNames:
             resultNames.remove(Analyzer.__PARETO__)
             resultNames.insert(0, Analyzer.__PARETO__)
             
+        k = 0
         for name in resultNames:
             k += 1
             if functionSpace:
@@ -110,10 +112,14 @@ class Analyzer:
             else:
                 solution = problem.getVariableSolution(name)
             if solution is not None:
-                rgb = 3*[0]
-                for p in xrange(3):
-                    if k & (1 << p) > 0:
-                        rgb[p] = 255
+                colorIdx = 0
+                if name != Analyzer.__PARETO__:
+                    colorIdx = self.resultNames.index(name) + 1
+                rgb = Analyzer.__COLORS__[colorIdx]
+#                rgb = 3*[0]
+#                for p in xrange(3):
+#                    if k & (1 << p) > 0:
+#                        rgb[p] = 255
                 points = solution.getSolutionPoints(generation[k-1])
                 solutions.append([name, points, rgb])
             
@@ -210,39 +216,55 @@ class Analyzer:
         print "    Generating figure for metric %s in problem %s" % (metricName, functionName)
         results = []
         for i in xrange(self.nResults - 1):
-            result = [self.resultNames[i], [self.metrics.metricMin[metricIdx][i], self.metrics.metricQ1[metricIdx][i], self.metrics.metricMean[metricIdx][i], \
-                                       self.metrics.metricQ3[metricIdx][i], self.metrics.metricMax[metricIdx][i]], ""]
+            name = Utils.getResultNameLatex(self.resultNames[i]) if latex else self.resultNames[i]
+            result = [name, [self.metrics.metricMin[metricIdx][i], self.metrics.metricQ1[metricIdx][i], self.metrics.metricMean[metricIdx][i], \
+                                       self.metrics.metricQ3[metricIdx][i], self.metrics.metricMax[metricIdx][i]], Analyzer.__COLORS__[i+1]]
             results.append(result)
             
         fname = Utils.getFunctionNameLatex(functionName) if latex else functionName
-        mname = Utils.getFunctionNameLatex(metricName) if latex else metricName
+        mname = Utils.getMetricNameLatex(metricName) if latex else metricName
         self.plotter.plotIndicators(results, fname, "", "", mname, filename)
     
-    def generateBestImage(self, functionName, result, filename, worst=False, latex=False):
-        print "    Generating %s figure of %s for %s" % ("worst" if worst else "best", result, functionName)
-        function = self.functions[functionName.lower()]
-        resultNames = [Analyzer.__PARETO__, result]
-        if result is None:
-            resultNames = self.resultNames
-        generation = [0] * len(resultNames)
-        
-        pareto = self.getFunctionPareto(functionName)
+    def _getBestRun(self, functionName, resultName, worst):
+        results = self.getFunctionResults(functionName, [resultName])
         factor = -1 if worst else 1
-        for i in xrange(len(resultNames)):
-            if resultNames[i] == Analyzer.__PARETO__:
-                continue
-            
-            results = self.getFunctionResults(functionName, [resultNames[i]])
-            bestValue = factor * (1 << 30)
-            metrics = Metrics(pareto, [results[0][1]])
-            for run in xrange(len(results[0][1])):
-                metrics.setSolutionsToCompare(0, run, None, None)
-                value = metrics.deltaP()
-                if value*factor < bestValue*factor:
-                    bestValue = value
-                    generation[i] = run
+        bestValue = factor * (1 << 30)
+        bestRun = -1
+
+        pareto = self.getFunctionPareto(functionName)
+        metrics = Metrics(pareto, [results[0][1]])
+        for run in xrange(len(results[0][1])):
+            metrics.setSolutionsToCompare(0, run, None, None)
+            value = metrics.deltaP()
+            if value*factor < bestValue*factor:
+                bestValue = value
+                bestRun = run
+        return bestRun
+    
+    def generateBestImages(self, functionName, results, filenames, worst=False, latex=False):
+        function = self.functions[functionName.lower()]
         
-        self.exportToImage(function, generation, True, resultNames, filename, latex)
+        window = [-(1<<30)] * self.metrics.dim
+        bestRun = [0] * len(results)
+        for point in self.getFunctionPareto(functionName):
+            for d in xrange(self.metrics.dim):
+                window[d] = max(window[d], point[d])
+        for i in xrange(len(results)):
+            resultName = results[i]
+            bestRun[i] = self._getBestRun(functionName, resultName, worst)
+            run = self.getFunctionResults(functionName, [resultName])[0][1][bestRun[i]]
+            for point in run:
+                for d in xrange(self.metrics.dim):
+                    #window[d] = max(window[d], math.ceil(point[d] * 10) / 10.0)
+                    window[d] = max(window[d], point[d])
+            
+        for i in xrange(len(results)):
+            resultName = results[i]
+            print "    Generating %s figure of %s for %s" % ("worst" if worst else "best", resultName, functionName)
+            resultNames = [Analyzer.__PARETO__, resultName]
+            generation = [0, bestRun[i]]
+            
+            self.exportToImage(function, generation, True, resultNames, filenames[i], latex, window)
         
     def computeMetrics(self, functionName):
         pareto = self.getFunctionPareto(functionName)

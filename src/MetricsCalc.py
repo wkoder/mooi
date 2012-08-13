@@ -6,6 +6,8 @@ Created on Feb 20, 2012
 from Metrics import Metrics
 import Utils
 
+import math
+import sys
 import numpy
 from scipy.stats import scoreatpercentile
 import types
@@ -24,9 +26,32 @@ class MetricsCalc():
     def __init__(self):
         self.nSolutions = None
         
+    def _removeDominatedFromSolutionData(self, solutions):
+        for solution in solutions:
+            for r in xrange(len(solution)):
+                run = solution[r]
+                nr = len(run)
+                nd = []
+                fromn = len(run)
+                for i in xrange(nr):
+                    dominated = False
+                    for j in xrange(nr):
+                        if i != j and Utils.dominates(run[j], run[i]):
+                            dominated = True
+                            break
+                    if not dominated:
+                        nd.append(run[i])
+                solution[r] = nd
+                
+                ton = len(nd)
+                if fromn != ton:
+                    print "From %d to %d points" % (fromn, ton)
+        return solutions
+        
     def computeMetrics(self, optimalPareto, solutions):
         self.solutionNames = [solution[0] for solution in solutions]
         solutionData = [solution[1] for solution in solutions]
+        #solutionData = self._removeDominatedFromSolutionData([solution[1] for solution in solutions])
         self.dim = len(solutionData[0][0][0])
         self.nSolutions = len(self.solutionNames)
         metrics = Metrics(optimalPareto, solutionData)
@@ -68,13 +93,16 @@ class MetricsCalc():
         
         nadirPoint = [-(1<<30)] * self.dim
         for solution in solutionData:
+            r = 0
             for run in solution:
+                r += 1
                 for point in run:
                     for d in xrange(self.dim):
-                        value = point[d] * (2 if point[d] > 0 else 0.5)
-                        nadirPoint[d] = max(nadirPoint[d], value) # Make it twice far
-        
+                        nadirPoint[d] = max(nadirPoint[d], math.ceil(point[d] * 10 + Utils.__EPS__) / 10.0)
+        print "    Using Nadir point: " + str(nadirPoint)
         metrics.setHypervolumeReference(nadirPoint)
+        maxHypervolume = metrics.maxHypervolume()
+        
         mean = Utils.createListList(self.nUnaryMetrics)
         std = Utils.createListList(self.nUnaryMetrics)
         mmin = Utils.createListList(self.nUnaryMetrics)
@@ -86,7 +114,13 @@ class MetricsCalc():
             for runA in xrange(len(solutionData[solutionA])):
                 metrics.setSolutionsToCompare(solutionA, runA, None, None)
                 for i in xrange(self.nUnaryMetrics):
-                    values[i].append(unaryMetricFunction[i]())
+                    value = unaryMetricFunction[i]()
+                    if self.unaryMetricNames[i] == "Hypervolume":
+                        value /= maxHypervolume
+                        if value > 1:
+                            print >> sys.stderr, "    Normalized hypervolume of %s exceeds 100%!" % \
+                                (self.solutionNames[solutionA])
+                    values[i].append(value)
                 
             for m in xrange(len(values)):
                 mean[m].append(numpy.mean(values[m]))

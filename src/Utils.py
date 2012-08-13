@@ -13,8 +13,8 @@ __EPS__ = 1e-6
 __ROUND__ = 4
 __RESULT_NAME_LATEX__ = {"moead": "MOEA/D", "paes": "PAES", "nsga2": "NSGA-II", "mocde": "pe-mocde", 
                            "mocde-L10": "ne-mocde$_{10}$", "mocde-L20": "ne-mocde$_{20}$", "mocde-L50": "ne-mocde$_{50}$"}
-__METRIC_NAME_LATEX__ = {"Inverted Generational Distance": "$I_{IGD}$", "Delta P": "$I_{\Delta_p}$", "Spacing": "$I_S$", "Hypervolume": "$I_H$", 
-                         "Coverage": "$I_C$", "Additive Epsilon": "$I_{\epsilon^+}$", "Multiplicative Epsilon": "$I_{\epsilon^*}$"}
+__METRIC_NAME_LATEX__ = {"Inverted Generational Distance": "I$_{IGD}$", "Delta P": "I$_{\Delta_p}$", "Spacing": "I$_S$", "Hypervolume": "I$_H$", 
+                         "Coverage": "I$_C$", "Additive Epsilon": "I$_{\epsilon^+}$", "Multiplicative Epsilon": "I$_{\epsilon^*}$"}
 __FUNCTION_NAME_LATEX__ = {}
 
 def getResultNameLatex(name):
@@ -37,13 +37,13 @@ def dominates(x, y):
     Returns True if vector x dominates vector y. False otherwise.
     """
     counter = 0
-    for i in xrange(x.size):
+    for i in xrange(len(x)):
         if x[i] > y[i]:
             return False
         if x[i] == y[i]:
             counter += 1
         
-    return counter < x.size
+    return counter < len(x)
         
         
 def weaklyDominates(x, y):

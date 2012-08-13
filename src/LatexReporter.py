@@ -88,10 +88,8 @@ class LatexReporter(object):
         if caption is not None and label is not None:
             latex.append("    \\caption{\\label{%s} %s}" % (label, caption))
         latex.append("\\end{table}")
-        
         if presentation:
             latex.append("\\end{frame}")
-        
         return "\n".join(latex)
     
     
@@ -186,28 +184,32 @@ class LatexReporter(object):
             desc = "todos los algoritmos"
         else:
             desc = Utils.getResultNameLatex(highlight)
-        caption = "ejecucion de %s al resolver el problema %s (de acuerdo a $I_{\\Delta_p}$)." % (desc, Utils.getFunctionNameLatex(functionName))
+        caption = "ejecuci\'{o}n de %s al resolver el problema %s (de acuerdo a %s." % (desc, Utils.getFunctionNameLatex(functionName), \
+                                                                                        Utils.getMetricNameLatex("Delta P"))
         
         latex = []
         if presentation:
             bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_best_fun.tex"
-            self.analyzer.generateBestImage(functionName, highlight, reportDir + ":" + bestImage, False, True)
+            self.analyzer.generateBestImages(functionName, [highlight], [reportDir + ":" + bestImage], False, True)
             latex = [self._getFigureLatex(bestImage, "Mejor %s" % caption, presentation)]
             
             worstImage = Analyzer.__IMAGES_DIR__ + functionName + "_worst_fun.tex"
-            self.analyzer.generateBestImage(functionName, highlight, reportDir + ":" + worstImage, True, True)
+            self.analyzer.generateBestImages(functionName, [highlight], [reportDir + ":" + worstImage], True, True)
             latex.append(self._getFigureLatex(worstImage, "Peor %s" % caption, presentation))
         else:
             images = []
             captions = []
+            bestImages = []
+            resultNames = []
             for result in self.analyzer.resultNames:
                 if result == Analyzer.__PARETO__:
                     continue
                 bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_" + result + "_best_fun.tex"
-                self.analyzer.generateBestImage(functionName, result, reportDir + ":" + bestImage, False, True)
-                
+                resultNames.append(result)
+                bestImages.append(reportDir + ":" + bestImage)
                 images.append(bestImage)
                 captions.append(Utils.getResultNameLatex(result))
+            self.analyzer.generateBestImages(functionName, resultNames, bestImages, False, True)
             latex.append(self._getFiguresLatex(images, captions, presentation, "Mejor " + caption))
         
             images = []
@@ -215,7 +217,7 @@ class LatexReporter(object):
             for i in xrange(len(self.analyzer.metrics.unaryMetricNames)):
                 metricName = self.analyzer.metrics.unaryMetricNames[i]
                 filename = Analyzer.__IMAGES_DIR__ + functionName + "_ind_" + metricName.replace(" ", "") + ".tex"
-                self.analyzer.generateMetricImage(functionName, metricName, i, reportDir + ":" + filename)
+                self.analyzer.generateMetricImage(functionName, metricName, i, reportDir + ":" + filename, True)
                 
                 images.append(filename)
                 captions.append("Indicador %s" % Utils.getMetricNameLatex(metricName))

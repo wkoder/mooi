@@ -89,6 +89,12 @@ class Metrics(object):
         """
         return self.momet.hypervolume(self.functions[self.a][self.aIdx], self.hypervolumeReference)
 
+    def maxHypervolume(self):
+        """
+        Computes the maximum hypervolume value calculated from the specified Pareto front.
+        """
+        return self.momet.hypervolume(self.paretoOptimal, self.hypervolumeReference)
+
     def coverage(self):
         """
         Computes the coverage value of two obtained solution sets.
