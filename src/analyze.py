@@ -19,6 +19,7 @@ parser.add_argument("--pareto", "-p", help="true Pareto front directory")
 parser.add_argument("--report", "-R", help="target report directory")
 parser.add_argument("--highlight", "-hl", nargs="?", help="result name to highlight")
 parser.add_argument("--presentation", action='store_const', const=True, default=False, help="if the document to generate is a presentation")
+parser.add_argument("--identifier", "-id", nargs="?", help="identifier of this report")
 args = parser.parse_args()
 
 reportDir = args.report
@@ -38,4 +39,4 @@ for functionName in reporter.getFunctionNames():
         functions.append(functionName)
 functions.sort(cmp=functionSorter)
 
-reporter.generateReport(reportDir, functions, args.highlight, args.presentation)
+reporter.generateReport(reportDir, functions, args.highlight, args.presentation, args.identifier)

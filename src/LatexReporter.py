@@ -9,6 +9,7 @@ import os
 
 from Analyzer import Analyzer
 import Utils
+from twisted.test.test_newcred import IDerivedCredentials
 
 class LatexReporter(object):
     
@@ -134,7 +135,7 @@ class LatexReporter(object):
         latex.append("        \\hline")
         
         latex.append("    \\end{tabularx}")
-        latex.append("    \\caption{\label{tab:-unary-results} Resultados para la familia de problemas .}")
+        latex.append("    \\caption{\\label{tab:unary-%s} Resultados para la familia de problemas .}" % (self.identifier))
         latex.append("\\end{sidewaystable}")
         return "\n".join(latex)
         
@@ -174,7 +175,7 @@ class LatexReporter(object):
         latex.append("        \\hline")
         
         latex.append("    \\end{tabularx}")
-        latex.append("    \\caption{\label{tab:-binary-results} Resultados para la familia de problemas .}")
+        latex.append("    \\caption{\\label{tab:binary-%s} Resultados para la familia de problemas .}" % (self.identifier))
         latex.append("\\end{table}")
         return "\n".join(latex)
     
@@ -234,7 +235,7 @@ class LatexReporter(object):
         latex.append("        \\end{center}")
         return "\n".join(latex)
     
-    def _getFiguresLatex(self, filenames, captions, presentation, overallCaption=None):
+    def _getFiguresLatex(self, filenames, captions, presentation, overallCaption="", label=""):
         n = len(filenames)
         latex = []
         if presentation or n == 1:
@@ -253,7 +254,7 @@ class LatexReporter(object):
                 latex.append(self._getCombinedFigureLatex(filenames[i], "(" + chr(ord("a") + i) + ") " + captions[i]))
             latex.append("    \\end{minipage}")
             latex.append("    \\end{center}")
-            latex.append("    \\caption{%s}" % overallCaption)
+            latex.append("    \\caption{\\label{%s} %s.}" % (label, overallCaption))
             latex.append("\\end{figure}")
     
         return "\n".join(latex)
@@ -261,7 +262,8 @@ class LatexReporter(object):
     def _getFunctionLatex(self, functionName, reportDir, highlight, presentation):
         self.analyzer.computeMetrics(functionName)
         
-        imageDir = reportDir + Analyzer.__IMAGES_DIR__
+        subdir = "" if len(self.identifier) == 0 else self.identifier + "/"
+        imageDir = reportDir + Analyzer.__IMAGES_DIR__ + subdir
         if not os.path.exists(imageDir):
             os.makedirs(imageDir)
         
@@ -269,8 +271,8 @@ class LatexReporter(object):
             desc = "todos los algoritmos"
         else:
             desc = Utils.getResultNameLatex(highlight)
-        caption = "ejecuci\\'{o}n de %s al resolver el problema %s (de acuerdo a %s." % (desc, Utils.getFunctionNameLatex(functionName), \
-                                                                                        Utils.getMetricNameLatex("Delta P"))
+        caption = "ejecuci\\'{o}n de %s al resolver el problema %s (de acuerdo a %s)" % \
+                (desc, Utils.getFunctionNameLatex(functionName), Utils.getMetricNameLatex("Delta P"))
         
         latex = []
         if presentation:
@@ -289,24 +291,27 @@ class LatexReporter(object):
             for result in self.analyzer.resultNames:
                 if result == Analyzer.__PARETO__:
                     continue
-                bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_" + result + "_best_fun.tex"
+                bestImage = Analyzer.__IMAGES_DIR__ + subdir + functionName + "_" + result + "_best_fun.tex"
                 resultNames.append(result)
                 bestImages.append(reportDir + ":" + bestImage)
                 images.append(bestImage)
                 captions.append(Utils.getResultNameLatex(result))
             self.analyzer.generateBestImages(functionName, resultNames, bestImages, False, True)
-            latex.append(self._getFiguresLatex(images, captions, presentation, "Mejor " + caption))
+            latex.append(self._getFiguresLatex(images, captions, presentation, "Mejor " + caption, \
+                                               "fig:%s-%s-best" % (self.identifier, functionName)))
         
             images = []
             captions = []
             for i in xrange(len(self.analyzer.metrics.unaryMetricNames)):
                 metricName = self.analyzer.metrics.unaryMetricNames[i]
-                filename = Analyzer.__IMAGES_DIR__ + functionName + "_ind_" + metricName.replace(" ", "") + ".tex"
+                filename = Analyzer.__IMAGES_DIR__ + subdir + functionName + "_ind_" + metricName.replace(" ", "") + ".tex"
                 self.analyzer.generateMetricImage(functionName, metricName, i, reportDir + ":" + filename, True)
                 
                 images.append(filename)
                 captions.append("Indicador %s" % Utils.getMetricNameLatex(metricName))
-            latex.append(self._getFiguresLatex(images, captions, presentation, "Indicadores en el problema %s" % Utils.getFunctionNameLatex(functionName)))
+            latex.append(self._getFiguresLatex(images, captions, presentation, "Indicadores en el problema %s" % \
+                                               Utils.getFunctionNameLatex(functionName), \
+                                               "fig:%s-%s-ind" % (self.identifier, functionName)))
         
         #latex.append(self.getCurrentLatex(functionName, presentation))
         return "\n".join(latex)
@@ -335,7 +340,8 @@ class LatexReporter(object):
         
         return "\n".join(latex)
     
-    def generateReport(self, reportDir, functionNames, highlight, presentation):
+    def generateReport(self, reportDir, functionNames, highlight, presentation, identifier):
+        self.identifier = "" if identifier is None else identifier
         if reportDir[-1] != "/":
             reportDir += "/"
         if os.path.exists(reportDir):
