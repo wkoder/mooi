@@ -244,11 +244,12 @@ class Analyzer:
     def generateBestImages(self, functionName, results, filenames, worst=False, latex=False):
         function = self.functions[functionName.lower()]
         
-        window = [-(1<<30)] * self.metrics.dim
+        window = [[1<<30, -(1<<30)] for _ in xrange(self.metrics.dim)]
         bestRun = [0] * len(results)
         for point in self.getFunctionPareto(functionName):
             for d in xrange(self.metrics.dim):
-                window[d] = max(window[d], point[d])
+                window[d][0] = min(window[d][0], point[d])
+                window[d][1] = max(window[d][1], point[d])
         for i in xrange(len(results)):
             resultName = results[i]
             bestRun[i] = self._getBestRun(functionName, resultName, worst)
@@ -256,7 +257,8 @@ class Analyzer:
             for point in run:
                 for d in xrange(self.metrics.dim):
                     #window[d] = max(window[d], math.ceil(point[d] * 10) / 10.0)
-                    window[d] = max(window[d], point[d])
+                    window[d][0] = min(window[d][0], point[d])
+                    window[d][1] = max(window[d][1], point[d])
             
         for i in xrange(len(results)):
             resultName = results[i]
@@ -269,5 +271,5 @@ class Analyzer:
     def computeMetrics(self, functionName):
         pareto = self.getFunctionPareto(functionName)
         results = self.getFunctionResults(functionName, self.resultNames)
-        self.metrics.computeMetrics(pareto, results)
+        self.metrics.computeMetrics(pareto, results, functionName)
         

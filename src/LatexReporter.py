@@ -17,6 +17,7 @@ class LatexReporter(object):
     __TEMPLATE_PRESENTATION_FILE__ = "presentation.tex"
     __TEMPLATE_PRESENTATION_DIR__ = Utils.__RESOURCES_DIR__ + "presentation/"
     __TEMPLATE_VAR__ = "%RESULTS%"
+    __DATA_FORMAT__ = "%.4f"
 
     def __init__(self):
         self.analyzer = Analyzer("latex")
@@ -92,6 +93,90 @@ class LatexReporter(object):
             latex.append("\\end{frame}")
         return "\n".join(latex)
     
+    def _getUnaryMetricLatex(self, data, functionNames):
+        nm = self.analyzer.metrics.nUnaryMetrics
+        nr = self.analyzer.nResults - 1
+        nf = len(functionNames)
+        nc = 2 + 4*nr
+
+        latex = ["\\begin{sidewaystable}"]
+        latex.append("    \\tiny \\centering")
+        latex.append("    \\begin{tabularx}{\\textwidth}{| l | l |%s} \\hline" % (" K |" * 4*nr))
+        
+        header = "        \\multirow{2}{*}{Problema} & \\multirow{2}{*}{Indicador}"
+        for resultName in self.analyzer.resultNames:
+            if resultName != Analyzer.__PARETO__:
+                header += " & \\multicolumn{4}{c|}{%s}" % Utils.getResultNameLatex(resultName)
+        latex.append(header + " \\\\ \\cline{3-%d}" % (nc))
+        latex.append((" & %s\\\\" % ("& \\mu & \\sigma & min & max " * nr)))
+        
+        for functionIdx in xrange(nf):
+            latex.append("        \\hline \\hline \\multirow{%d}{*}{%s}" % (nm, Utils.getFunctionNameLatex(functionNames[functionIdx])))
+            for metricIdx in xrange(nm):
+                latex.append("            & %s" % (Utils.getMetricNameLatex(self.analyzer.metrics.unaryMetricNames[metricIdx])))
+                best = [1 << 30] * 4
+                factor = 1 if self.analyzer.metrics.unaryMetricOptType[metricIdx] == self.analyzer.metrics.__MIN__ else -1
+                for i in [0, 2, 3]:
+                    best[i] *= factor
+                for resultIdx in xrange(nr):
+                    for i in xrange(4):
+                        f = 1 if i == 1 else factor
+                        best[i] = min(best[i]*f, data[functionIdx][metricIdx][resultIdx][i]*f) * f
+                for resultIdx in xrange(nr):
+                    row = "                "
+                    for i in xrange(4):
+                        value = LatexReporter.__DATA_FORMAT__ % data[functionIdx][metricIdx][resultIdx][i]
+                        if value == LatexReporter.__DATA_FORMAT__ % best[i]:
+                            value = "\\textbf{%s}" % value
+                        row += " & " + value
+                    latex.append(row)
+                latex.append("                \\\\%s" % ("" if metricIdx == nm-1 else " \\cline{2-%d}"%nc))
+        latex.append("        \\hline")
+        
+        latex.append("    \\end{tabularx}")
+        latex.append("    \\caption{\label{tab:-unary-results} Resultados para la familia de problemas .}")
+        latex.append("\\end{sidewaystable}")
+        return "\n".join(latex)
+        
+    def _getBinaryMetricLatex(self, data, functionNames):
+        nm = self.analyzer.metrics.nBinaryMetrics
+        nr = self.analyzer.nResults - 1
+        nf = len(functionNames)
+        nc = 3 + nr
+
+        latex = ["\\begin{table}"]
+        latex.append("    \\tiny \\centering")
+        latex.append("    \\begin{tabularx}{\\textwidth}{| l | l | l |%s} \\hline" % (" K |" * nr))
+        
+        latex.append("        \\multirow{2}{*}{Problema} & \\multirow{2}{*}{Indicador} & \\multirow{2}{*}{Algoritmo A} & \\multicolumn{4}{c |}{Algoritmo B} " + \
+                "\\\\ \\cline{4-%d}" % (nc))
+        latex.append("                & & %s \\\\" % (" ".join("& %s" % Utils.getResultNameLatex(self.analyzer.resultNames[resultBIdx]).replace("$", "") for resultBIdx in xrange(nr))))
+        
+        for functionIdx in xrange(nf):
+            latex.append("        \\hline \\hline \\multirow{%d}{*}{%s}" % (nm*nr, Utils.getFunctionNameLatex(functionNames[functionIdx])))
+            for metricIdx in xrange(nm):
+                factor = 1 if self.analyzer.metrics.binaryMetricOptType[metricIdx] == self.analyzer.metrics.__MIN__ else -1
+                latex.append("            & \\multirow{%d}{*}{%s(A,B)}" % (nr, Utils.getMetricNameLatex(self.analyzer.metrics.binaryMetricNames[metricIdx])))
+                for resultAIdx in xrange(nr):
+                    row = "                %s & %s" % ("" if resultAIdx == 0 else "&", Utils.getResultNameLatex(self.analyzer.resultNames[resultAIdx]))
+                    for resultBIdx in xrange(nr):
+                        d = data[functionIdx][metricIdx][resultAIdx][resultBIdx]
+                        if d is None:
+                            value = "$---$"
+                        else:
+                            value = "%.4f" % d
+                            if d*factor < data[functionIdx][metricIdx][resultBIdx][resultAIdx]*factor:
+                                value = "\\textbf{%s}" % value
+                        row += " & " + value
+                    row += " \\\\ %s" % (("" if metricIdx == nm-1 else "\\cline{2-%d}" % nc) if resultAIdx == nr-1 else "\\cline{3-%d}" % nc)
+                    latex.append(row)
+                        
+        latex.append("        \\hline")
+        
+        latex.append("    \\end{tabularx}")
+        latex.append("    \\caption{\label{tab:-binary-results} Resultados para la familia de problemas .}")
+        latex.append("\\end{table}")
+        return "\n".join(latex)
     
     def getCurrentLatex(self, functionName, presentation):
         nRows = len(self.analyzer.metrics.labels)
@@ -184,7 +269,7 @@ class LatexReporter(object):
             desc = "todos los algoritmos"
         else:
             desc = Utils.getResultNameLatex(highlight)
-        caption = "ejecuci\'{o}n de %s al resolver el problema %s (de acuerdo a %s." % (desc, Utils.getFunctionNameLatex(functionName), \
+        caption = "ejecuci\\'{o}n de %s al resolver el problema %s (de acuerdo a %s." % (desc, Utils.getFunctionNameLatex(functionName), \
                                                                                         Utils.getMetricNameLatex("Delta P"))
         
         latex = []
@@ -223,7 +308,7 @@ class LatexReporter(object):
                 captions.append("Indicador %s" % Utils.getMetricNameLatex(metricName))
             latex.append(self._getFiguresLatex(images, captions, presentation, "Indicadores en el problema %s" % Utils.getFunctionNameLatex(functionName)))
         
-        latex.append(self.getCurrentLatex(functionName, presentation))
+        #latex.append(self.getCurrentLatex(functionName, presentation))
         return "\n".join(latex)
     
     
@@ -289,6 +374,9 @@ class LatexReporter(object):
             breakpoints = []
         latex = []
         idx = 0
+        unaryMetricTable = []
+        binaryMetricTable = []
+        ns = self.analyzer.nResults - 1
         for functionName in functionNames:
             idx += 1
             print "Generating results for function %s (%d/%d)" % (functionName, idx, len(functionNames))
@@ -309,6 +397,24 @@ class LatexReporter(object):
                 for i in xrange(self.analyzer.nResults - 1):
                     convPoints[i] += self.analyzer.metrics.convPoints[i]
                     distPoints[i] += self.analyzer.metrics.distPoints[i]
+                    
+            functionData = []
+            for i in xrange(self.analyzer.metrics.nUnaryMetrics):
+                metric = []
+                for j in xrange(self.analyzer.metrics.nSolutions):
+                    metric.append([self.analyzer.metrics.metricMean[i][j], self.analyzer.metrics.metricStd[i][j], self.analyzer.metrics.metricMin[i][j], \
+                                   self.analyzer.metrics.metricMax[i][j]])
+                functionData.append(metric)
+            unaryMetricTable.append(functionData)
+            functionData = []
+            for i in xrange(self.analyzer.metrics.nBinaryMetrics):
+                f = self.analyzer.metrics.nUnaryMetrics + i*ns
+                metric = self.analyzer.metrics.metricMean[f:f+ns]
+                functionData.append(metric)
+            binaryMetricTable.append(functionData)
+        
+        latex.append(self._getUnaryMetricLatex(unaryMetricTable, functionNames))
+        latex.append(self._getBinaryMetricLatex(binaryMetricTable, functionNames))
         
         if showSummary:
             print "Generating all summary results"

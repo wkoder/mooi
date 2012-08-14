@@ -236,7 +236,7 @@ class MainWindow(QMainWindow):
     def _computeMetrics(self, functionName):
         pareto = self.analyzer.getFunctionPareto(functionName)
         solutions = self.analyzer.getFunctionResults(functionName, self._getSelectedResultNames())
-        self.metrics.updateMetrics(pareto, solutions)
+        self.metrics.updateMetrics(pareto, solutions, functionName)
         
     def helpAbout(self):
         QMessageBox.about(self, "About Image Changer",

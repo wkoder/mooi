@@ -21,10 +21,10 @@ class ResultPlotter:
             return
         
         self._startPlotting(title, subtitle, xlabel, ylabel, zlabel)
-        self.gp("set size ratio -1")
+        #self.gp("set size ratio -1")
         if window is not None:
             for i in xrange(len(window)):
-                self.gp("set %srange [ 0.0 : %f ] noreverse nowriteback" % (chr(ord("x") + i), window[i]))
+                self.gp("set %srange [ %f : %f ] noreverse nowriteback" % (chr(ord("x") + i), window[i][0], window[i][1]))
         idx = 0
         tempfiles = []
         for solution in solutions:
@@ -64,6 +64,7 @@ class ResultPlotter:
             xtics += "'%s' %d" % (solutionName, idx)
 
             values = result[1]
+            #print >> sys.stderr, values
             minAll = min(minAll, values[0])
             maxAll = max(maxAll, values[4])
             tempfilename = self._writeToTemporalFile([[idx] + values])

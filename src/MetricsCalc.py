@@ -12,6 +12,7 @@ import numpy
 from scipy.stats import scoreatpercentile
 import types
 from symbol import factor
+from numpy.core.numeric import NaN
 
 class MetricsCalc():
         
@@ -48,7 +49,7 @@ class MetricsCalc():
                     print "From %d to %d points" % (fromn, ton)
         return solutions
         
-    def computeMetrics(self, optimalPareto, solutions):
+    def computeMetrics(self, optimalPareto, solutions, functionName):
         self.solutionNames = [solution[0] for solution in solutions]
         solutionData = [solution[1] for solution in solutions]
         #solutionData = self._removeDominatedFromSolutionData([solution[1] for solution in solutions])
@@ -56,24 +57,23 @@ class MetricsCalc():
         self.nSolutions = len(self.solutionNames)
         metrics = Metrics(optimalPareto, solutionData)
         
-        self.unaryMetricNames = ['Inverted Generational Distance', 'Delta P', \
-                        'Spacing', "Hypervolume"]
-        unaryMetricOptType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, \
+        self.unaryMetricNames = ['Inverted Generational Distance', 'Delta P', 'Spacing', "Hypervolume"]
+        self.unaryMetricOptType = [MetricsCalc.__MIN__, MetricsCalc.__MIN__, \
                               MetricsCalc.__MIN__, MetricsCalc.__MAX__]
         unaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, \
                            MetricsCalc.__DIST__, [MetricsCalc.__CONV__, MetricsCalc.__DIST__]]
         unaryMetricFunction = [metrics.invertedGenerationalDistance, metrics.deltaP, \
                                metrics.spacing, metrics.hypervolume]
         self.nUnaryMetrics = len(self.unaryMetricNames)
-        binaryMetrics = ['Coverage', 'Additive Epsilon', 'Multiplicative Epsilon']
-        binaryMetricOptType = [MetricsCalc.__MAX__, MetricsCalc.__MIN__, MetricsCalc.__MIN__]
+        self.binaryMetricNames = ['Coverage', 'Additive Epsilon', 'Multiplicative Epsilon']
+        self.binaryMetricOptType = [MetricsCalc.__MAX__, MetricsCalc.__MIN__, MetricsCalc.__MIN__]
         binaryMetricType = [MetricsCalc.__CONV__, MetricsCalc.__CONV__, MetricsCalc.__CONV__]
-        self.nBinaryMetrics = len(binaryMetrics)
+        self.nBinaryMetrics = len(self.binaryMetricNames)
         self.labels = []
         self.sublabels = []
         self.labels += self.unaryMetricNames
         self.sublabels += [None] * len(self.labels)
-        for binaryMetric in binaryMetrics:
+        for binaryMetric in self.binaryMetricNames:
             self.labels += [binaryMetric] * self.nSolutions
             self.sublabels += self.solutionNames
             
@@ -98,7 +98,7 @@ class MetricsCalc():
                 r += 1
                 for point in run:
                     for d in xrange(self.dim):
-                        nadirPoint[d] = max(nadirPoint[d], math.ceil(point[d] * 10 + Utils.__EPS__) / 10.0)
+                        nadirPoint[d] = max(nadirPoint[d], math.ceil(point[d] * 10 + 0.001) / 10.0)
         print "    Using Nadir point: " + str(nadirPoint)
         metrics.setHypervolumeReference(nadirPoint)
         maxHypervolume = metrics.maxHypervolume()
@@ -115,13 +115,18 @@ class MetricsCalc():
                 metrics.setSolutionsToCompare(solutionA, runA, None, None)
                 for i in xrange(self.nUnaryMetrics):
                     value = unaryMetricFunction[i]()
+                    if math.isnan(value):
+                        value = 0;
+                        if self.unaryMetricNames[i] != "Spacing":
+                            print >> sys.stderr, "Found one metric, besides Spacing, giving NaN: %s" % (self.unaryMetricNames[i]) 
                     if self.unaryMetricNames[i] == "Hypervolume":
                         value /= maxHypervolume
                         if value > 1:
-                            print >> sys.stderr, "    Normalized hypervolume of %s exceeds 100%!" % \
-                                (self.solutionNames[solutionA])
+                            #print >> sys.stderr, "    Normalized hypervolume of %s for %s exceeds 1.0: %f" % \
+                            #    (self.solutionNames[solutionA], functionName, value)
+                            value = 1.0
                     values[i].append(value)
-                
+            
             for m in xrange(len(values)):
                 mean[m].append(numpy.mean(values[m]))
                 std[m].append(numpy.std(values[m]))
@@ -145,7 +150,7 @@ class MetricsCalc():
                     continue
                 
                 if row < len(self.unaryMetricNames):
-                    factor = unaryMetricOptType[row]
+                    factor = self.unaryMetricOptType[row]
                     if abs(round(m*factor, Utils.__ROUND__) - 
                            round(min(x*factor for x in mean[row] if x is not None), Utils.__ROUND__)) < Utils.__EPS__:
                         self.metricIsBest[row][column] = True
@@ -156,7 +161,7 @@ class MetricsCalc():
                 elif row >= len(self.unaryMetricNames):
                     offset = row - (row - len(self.unaryMetricNames)) % self.nSolutions
                     metricIdx = int((row - len(self.unaryMetricNames)) / self.nSolutions)
-                    factor = binaryMetricOptType[metricIdx]
+                    factor = self.binaryMetricOptType[metricIdx]
                     if round(m*factor, Utils.__ROUND__) >= round(mean[offset + column][row - offset]*factor, Utils.__ROUND__):
                         self.metricIsBest[row][column] = True
                         self._addMetricPoints(1.0 / (self.nSolutions - 1), column, binaryMetricType[metricIdx])

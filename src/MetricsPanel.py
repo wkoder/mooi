@@ -51,8 +51,8 @@ class MetricsPanel(QTableWidget):
         cb = QApplication.clipboard()
         cb.setText(self.analyzer.getCurrentLatex())
         
-    def updateMetrics(self, optimalPareto, solutions):
-        self.metrics.computeMetrics(optimalPareto, solutions)
+    def updateMetrics(self, optimalPareto, solutions, functionName):
+        self.metrics.computeMetrics(optimalPareto, solutions, functionName)
         
         self.setColumnCount(self.metrics.getNSolutions())
         self.setHorizontalHeaderLabels(self.metrics.getSolutionNames())
