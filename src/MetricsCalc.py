@@ -116,16 +116,16 @@ class MetricsCalc():
                 for i in xrange(self.nUnaryMetrics):
                     value = unaryMetricFunction[i]()
                     if math.isnan(value):
-                        value = 0;
                         if self.unaryMetricNames[i] != "Spacing":
-                            print >> sys.stderr, "Found one metric, besides Spacing, giving NaN: %s" % (self.unaryMetricNames[i]) 
-                    if self.unaryMetricNames[i] == "Hypervolume":
-                        value /= maxHypervolume
-                        if value > 1:
-                            #print >> sys.stderr, "    Normalized hypervolume of %s for %s exceeds 1.0: %f" % \
-                            #    (self.solutionNames[solutionA], functionName, value)
-                            value = 1.0
-                    values[i].append(value)
+                            print >> sys.stderr, "Found one metric, besides Spacing, giving NaN: %s" % (self.unaryMetricNames[i])
+                    else: # Good value
+                        if self.unaryMetricNames[i] == "Hypervolume":
+                            value /= maxHypervolume
+                            if value > 1:
+                                #print >> sys.stderr, "    Normalized hypervolume of %s for %s exceeds 1.0: %f" % \
+                                #    (self.solutionNames[solutionA], functionName, value)
+                                value = 1.0
+                        values[i].append(value)
             
             for m in xrange(len(values)):
                 mean[m].append(numpy.mean(values[m]))

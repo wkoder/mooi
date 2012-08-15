@@ -126,9 +126,13 @@ class LatexReporter(object):
                 for resultIdx in xrange(nr):
                     row = "                "
                     for i in xrange(4):
-                        value = LatexReporter.__DATA_FORMAT__ % data[functionIdx][metricIdx][resultIdx][i]
-                        if value == LatexReporter.__DATA_FORMAT__ % best[i]:
-                            value = "\\textbf{%s}" % value
+                        v = data[functionIdx][metricIdx][resultIdx][i]
+                        if v >= Utils.__INF__:
+                            value = "\\infty"
+                        else:
+                            value = LatexReporter.__DATA_FORMAT__ % v
+                            if value == LatexReporter.__DATA_FORMAT__ % best[i]:
+                                value = "\\textbf{%s}" % value
                         row += " & " + value
                     latex.append(row)
                 latex.append("                \\\\%s" % ("" if metricIdx == nm-1 else " \\cline{2-%d}"%nc))
@@ -286,6 +290,19 @@ class LatexReporter(object):
         else:
             images = []
             captions = []
+            for i in xrange(len(self.analyzer.metrics.unaryMetricNames)):
+                metricName = self.analyzer.metrics.unaryMetricNames[i]
+                filename = Analyzer.__IMAGES_DIR__ + subdir + functionName + "_ind_" + metricName.replace(" ", "") + ".tex"
+                self.analyzer.generateMetricImage(functionName, metricName, i, reportDir + ":" + filename, True)
+                
+                images.append(filename)
+                captions.append("Indicador %s" % Utils.getMetricNameLatex(metricName))
+            latex.append(self._getFiguresLatex(images, captions, presentation, "Indicadores en el problema %s" % \
+                                               Utils.getFunctionNameLatex(functionName), \
+                                               "fig:%s-%s-ind" % (self.identifier, functionName)))
+            
+            images = []
+            captions = []
             bestImages = []
             resultNames = []
             for result in self.analyzer.resultNames:
@@ -300,18 +317,6 @@ class LatexReporter(object):
             latex.append(self._getFiguresLatex(images, captions, presentation, "Mejor " + caption, \
                                                "fig:%s-%s-best" % (self.identifier, functionName)))
         
-            images = []
-            captions = []
-            for i in xrange(len(self.analyzer.metrics.unaryMetricNames)):
-                metricName = self.analyzer.metrics.unaryMetricNames[i]
-                filename = Analyzer.__IMAGES_DIR__ + subdir + functionName + "_ind_" + metricName.replace(" ", "") + ".tex"
-                self.analyzer.generateMetricImage(functionName, metricName, i, reportDir + ":" + filename, True)
-                
-                images.append(filename)
-                captions.append("Indicador %s" % Utils.getMetricNameLatex(metricName))
-            latex.append(self._getFiguresLatex(images, captions, presentation, "Indicadores en el problema %s" % \
-                                               Utils.getFunctionNameLatex(functionName), \
-                                               "fig:%s-%s-ind" % (self.identifier, functionName)))
         
         #latex.append(self.getCurrentLatex(functionName, presentation))
         return "\n".join(latex)

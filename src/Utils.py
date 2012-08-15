@@ -11,8 +11,9 @@ import os
 __RESOURCES_DIR__ = os.path.dirname(__file__) + "/../resources/"
 __EPS__ = 1e-6
 __ROUND__ = 4
-__RESULT_NAME_LATEX__ = {"moead": "MOEA/D", "paes": "PAES", "nsga2": "NSGA-II", "mocde": "pe-mocde", 
-                           "mocde-L10": "ne-mocde$_{10}$", "mocde-L20": "ne-mocde$_{20}$", "mocde-L50": "ne-mocde$_{50}$"}
+__INF__ = 1 << 30
+__RESULT_NAME_LATEX__ = {"moead": "MOEA/D", "paes": "PAES", "nsga2": "NSGA-II", "mocde": "mocDE", "mocde-L0": "pe-mocDE", 
+                           "mocde-L10": "ne-mocDE$_{10}$", "mocde-L20": "ne-mocDE$_{20}$", "mocde-L50": "ne-mocde$_{50}$"}
 __METRIC_NAME_LATEX__ = {"Inverted Generational Distance": "I$_{IGD}$", "Delta P": "I$_{\Delta_p}$", "Spacing": "I$_S$", "Hypervolume": "I$_H$", 
                          "Coverage": "I$_C$", "Additive Epsilon": "I$_{\epsilon^+}$", "Multiplicative Epsilon": "I$_{\epsilon^*}$"}
 __FUNCTION_NAME_LATEX__ = {}

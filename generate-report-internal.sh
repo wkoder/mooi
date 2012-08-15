@@ -2,7 +2,7 @@
 
 path=../mocde/results/history/$1
 name=mocde
-main=$name
+main=$name-L0
 #functions="zdt* dtlz*"
 functions="zdt4"
 id="intres"
