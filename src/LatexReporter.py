@@ -281,11 +281,11 @@ class LatexReporter(object):
         latex = []
         if presentation:
             bestImage = Analyzer.__IMAGES_DIR__ + functionName + "_best_fun.tex"
-            self.analyzer.generateBestImages(functionName, [highlight], [reportDir + ":" + bestImage], False, True)
+            self.analyzer.generateImages(functionName, [highlight], [reportDir + ":" + bestImage], 0, True)
             latex = [self._getFigureLatex(bestImage, "Mejor %s" % caption, presentation)]
             
             worstImage = Analyzer.__IMAGES_DIR__ + functionName + "_worst_fun.tex"
-            self.analyzer.generateBestImages(functionName, [highlight], [reportDir + ":" + worstImage], True, True)
+            self.analyzer.generateImages(functionName, [highlight], [reportDir + ":" + worstImage], 1, True)
             latex.append(self._getFigureLatex(worstImage, "Peor %s" % caption, presentation))
         else:
             images = []
@@ -313,8 +313,10 @@ class LatexReporter(object):
                 bestImages.append(reportDir + ":" + bestImage)
                 images.append(bestImage)
                 captions.append(Utils.getResultNameLatex(result))
-            self.analyzer.generateBestImages(functionName, resultNames, bestImages, False, True)
-            latex.append(self._getFiguresLatex(images, captions, presentation, "Mejor " + caption, \
+            self.analyzer.generateImages(functionName, resultNames, bestImages, 0.5, True)
+            caption = "Ejecuci\\'{o}n de %s al resolver el problema %s." % \
+                (desc, Utils.getFunctionNameLatex(functionName))
+            latex.append(self._getFiguresLatex(images, captions, presentation, caption, \
                                                "fig:%s-%s-best" % (self.identifier, functionName)))
         
         

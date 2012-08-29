@@ -225,23 +225,21 @@ class Analyzer:
         mname = Utils.getMetricNameLatex(metricName) if latex else metricName
         self.plotter.plotIndicators(results, fname, "", "", mname, filename)
     
-    def _getBestRun(self, functionName, resultName, worst):
+    def _getRun(self, functionName, resultName, rank=0.0):
         results = self.getFunctionResults(functionName, [resultName])
-        factor = -1 if worst else 1
-        bestValue = factor * (1 << 30)
-        bestRun = -1
+        runs = []
 
         pareto = self.getFunctionPareto(functionName)
         metrics = Metrics(pareto, [results[0][1]])
         for run in xrange(len(results[0][1])):
             metrics.setSolutionsToCompare(0, run, None, None)
             value = metrics.deltaP()
-            if value*factor < bestValue*factor:
-                bestValue = value
-                bestRun = run
-        return bestRun
+            runs.append([value, run])
+        runs.sort(key = lambda x : x[0])
+        idx = max(0, int(round(len(runs) * rank)) - 1)
+        return runs[idx][1]
     
-    def generateBestImages(self, functionName, results, filenames, worst=False, latex=False):
+    def generateImages(self, functionName, results, filenames, rank=0.0, latex=False):
         function = self.functions[functionName.lower()]
         
         window = [[1<<30, -(1<<30)] for _ in xrange(self.metrics.dim)]
@@ -252,7 +250,7 @@ class Analyzer:
                 window[d][1] = max(window[d][1], point[d])
         for i in xrange(len(results)):
             resultName = results[i]
-            bestRun[i] = self._getBestRun(functionName, resultName, worst)
+            bestRun[i] = self._getRun(functionName, resultName, rank)
             run = self.getFunctionResults(functionName, [resultName])[0][1][bestRun[i]]
             for point in run:
                 for d in xrange(self.metrics.dim):
@@ -262,7 +260,7 @@ class Analyzer:
             
         for i in xrange(len(results)):
             resultName = results[i]
-            print "    Generating %s figure of %s for %s" % ("worst" if worst else "best", resultName, functionName)
+            print "    Generating figure of %s for %s" % (resultName, functionName)
             resultNames = [Analyzer.__PARETO__, resultName]
             generation = [0, bestRun[i]]
             

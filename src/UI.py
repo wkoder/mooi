@@ -198,7 +198,7 @@ class MainWindow(QMainWindow):
             filename = tempfile.mkstemp(prefix=prefix, suffix=".png", text=False)[1]
         resultNames = self._getSelectedResultNames()
         self.analyzer.exportToImage(self.currentSolution, [generation-1]*len(resultNames), self.isFunctionSpaceSelected(), \
-                                    resultNames, filename)
+                                    resultNames, str(filename))
         if tmp:
             self.plot.setPlotPixmap(filename)
             try:
